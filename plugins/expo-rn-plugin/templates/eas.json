@@ -17,12 +17,12 @@
         "simulator": false
       }
     },
-    "production": {
+    "prd": {
       "autoIncrement": true
     }
   },
   "submit": {
-    "production": {
+    "prd": {
       "ios": {
         "appleId": "your@apple.id"
       },

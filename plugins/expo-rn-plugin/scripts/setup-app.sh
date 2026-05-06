@@ -298,9 +298,9 @@ node -e "
   add('dev-client-ios-device',
     'yarn pre-build \$0 "eas build --platform ios --profile preview --local"');
   add('build-store-ios',
-    'yarn pre-build \$0 "eas build --platform ios --profile production --local --non-interactive --output ./app-build.ipa"');
+    'yarn pre-build \$0 "eas build --platform ios --profile prd --local --non-interactive --output ./app-build.ipa"');
   add('build-store-android',
-    'yarn pre-build \$0 "eas build --platform android --profile production --local --non-interactive --output ./app-build.aab"');
+    'yarn pre-build \$0 "eas build --platform android --profile prd --local --non-interactive --output ./app-build.aab"');
   add('build-store-all', 'yarn build-store-android \$0 && yarn build-store-ios \$0');
   add('deploy-store-ios',
     'yarn build-store-ios \$0 && eas submit --platform ios --profile \$0 --path ./app-build.ipa');
@@ -359,8 +359,8 @@ node -e "
     'dev-client-ios': 'yarn pre-build \$0 "eas build --platform ios --profile development --local"',
     'dev-client-android': 'yarn pre-build \$0 "eas build --platform android --profile development --local"',
     'dev-client-ios-device': 'yarn pre-build \$0 "eas build --platform ios --profile preview --local"',
-    'build-store-ios': 'yarn pre-build \$0 "eas build --platform ios --profile production --local --non-interactive --output ./app-build.ipa"',
-    'build-store-android': 'yarn pre-build \$0 "eas build --platform android --profile production --local --non-interactive --output ./app-build.aab"',
+    'build-store-ios': 'yarn pre-build \$0 "eas build --platform ios --profile prd --local --non-interactive --output ./app-build.ipa"',
+    'build-store-android': 'yarn pre-build \$0 "eas build --platform android --profile prd --local --non-interactive --output ./app-build.aab"',
     'build-store-all': 'yarn build-store-android \$0 && yarn build-store-ios \$0',
     'deploy-store-ios': 'yarn build-store-ios \$0 && eas submit --platform ios --profile \$0 --path ./app-build.ipa',
     'deploy-store-android': 'yarn build-store-android \$0 && eas submit --platform android --profile \$0 --path ./app-build.aab',
