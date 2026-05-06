@@ -15,6 +15,7 @@
 - `KeyboardAvoidingView` — use `react-native-keyboard-controller`
 - `Alert.alert` for non-destructive feedback — use `burnt.toast()`
 - `npm` / `npx` / `pnpm` — always `yarn`
+- `yarn add` for Expo SDK packages — use `yarn expo install <pkg>` to get the SDK-compatible version
 - Edit files in `src/api/generated/` — run `yarn generate:open-api-hooks`
 - Store auth tokens in MMKV or AsyncStorage — use `expo-secure-store`
 - Handle raw card data — use Stripe `PaymentSheet` only
@@ -30,6 +31,7 @@
 ## Always do
 
 - Run `tsc --noEmit` after every change — zero errors before done
+- Run `yarn expo install --check` after adding packages — fixes SDK version mismatches before they break builds
 - Wrap user-visible strings: `<Trans>` in JSX, `` t`…` `` for props (import from `@lingui/react/macro`)
 - Keep files under 500 lines
 - One `import` statement per module path
