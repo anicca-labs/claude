@@ -198,6 +198,41 @@ Doppler stores all secrets (API keys, Supabase URLs, etc.) so nothing lives in `
 
 After setup, `yarn start` automatically writes `.env` from Doppler secrets via the `prestart` script. Design tokens also sync on `yarn start` (via `doppler run` inside the script — no extra flags needed).
 
+## Social auth (Apple + Google via Supabase)
+
+Configure in Supabase → Authentication → Providers for each environment (stg + prd separately).
+
+### Apple
+
+- Client IDs: comma-separated bundle ID + Services ID (e.g. `com.myapp.stg, com.myapp.stg.sign-in`)
+- Secret Key: generate a `.p8` key in Apple Developer → Keys
+- ⚠️ **Apple OAuth secret keys expire every 6 months** — set a calendar reminder; expired keys silently break web OAuth sign-in
+- Callback URL shown by Supabase → register it in Apple Developer Center → your Services ID → Return URLs
+
+### Google
+
+- Client IDs: your Web client ID (from Google Cloud Console → OAuth 2.0 Client IDs)
+- Client Secret: Web client's secret
+- ✅ **Enable "Skip nonce checks"** — required for native iOS since `@react-native-google-signin` doesn't pass the nonce back to Supabase
+- Callback URL shown by Supabase → add it to Google Cloud → OAuth → Authorised redirect URIs
+
+### Doppler keys required per env (stg + prd)
+
+```bash
+GOOGLE_WEB_CLIENT_ID              # Web OAuth client ID
+GOOGLE_IOS_CLIENT_ID              # iOS OAuth client ID
+GOOGLE_ANDROID_CLIENT_ID          # Android OAuth client ID
+ANDROID_APPLE_SIGN_IN_CLIENT_ID   # Apple Services ID (Android OAuth)
+ANDROID_APPLE_SIGN_IN_CALLBACK    # Supabase callback URL
+```
+
+### Supabase URL Configuration
+
+In Authentication → URL Configuration, set the redirect URL per env:
+
+- stg: `{slug}-stg://`
+- prd: `{slug}://`
+
 ## Project CLAUDE.md
 
 Keep your project's `CLAUDE.md` lean (under 80 lines). Move detailed standards to the on-demand skill:
