@@ -55,6 +55,13 @@
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
       "args": ["npx", "-y", "@upstash/context7-mcp@latest"]
+    },
+    "revenuecat": {
+      "type": "http",
+      "url": "https://mcp.revenuecat.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer ${RC_MCP_API_KEY}"
+      }
     }
   }
 }
