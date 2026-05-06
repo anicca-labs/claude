@@ -539,7 +539,10 @@ GOOGLE_SERVICES_JSON_PATH={{ .GOOGLE_SERVICES_JSON_PATH }}
 # EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY={{ .STRIPE_PUBLISHABLE_KEY }}
 
 # Optional: RevenueCat — single key for both iOS and Android (no platform split)
+# IMPORTANT: digital goods/subscriptions consumed in-app MUST use IAP (RevenueCat), NOT Stripe
+# RC_MCP_API_KEY is the v2 API write key for the RevenueCat MCP (not the SDK key)
 # EXPO_PUBLIC_RC_API_KEY={{ .REVENUECAT_API_KEY }}
+# RC_MCP_API_KEY={{ .RC_MCP_API_KEY }}
 
 # Optional: Social auth (Apple + Google sign-in via Supabase)
 # EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID={{ .GOOGLE_WEB_CLIENT_ID }}

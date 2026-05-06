@@ -19,6 +19,7 @@
 - Edit files in `src/api/generated/` — run `yarn generate:open-api-hooks`
 - Store auth tokens in MMKV or AsyncStorage — use `expo-secure-store`
 - Handle raw card data — use Stripe `PaymentSheet` only
+- Use Stripe for digital goods/features consumed in-app — Apple/Google require IAP; use RevenueCat (`@revenue-cat`) instead
 - Log PII in Sentry tags or breadcrumbs
 - Log PII or payment data in analytics events — use opaque internal IDs only
 - Put logic in route files — route files are thin wrappers (`export { default } from '@screens/FooScreen'`); all UI lives in `src/screens/`
