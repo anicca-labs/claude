@@ -50,6 +50,11 @@
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
       "args": ["npx", "-y", "@upstash/context7-mcp@latest"]
+    },
+    "revenuecat": {
+      "type": "stdio",
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
+      "args": ["bash", "-c", "exec npx -y supergateway --streamableHttp https://mcp.revenuecat.ai/mcp --oauth2Bearer \"$RC_MCP_API_KEY\""]
     }
   }
 }

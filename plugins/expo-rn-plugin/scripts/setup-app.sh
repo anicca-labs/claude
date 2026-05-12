@@ -312,11 +312,14 @@ node -e "
   add('deploy-store-ios',
     'yarn build-store-ios && doppler run --project mobile --config \${ENV:-stg} -- eas submit --platform ios --profile \${ENV:-stg} --path ./app-build.ipa');
   add('deploy-store-ios:prd', 'ENV=prd yarn deploy-store-ios');
+  add('deploy-store-ios:prd-internal', 'yarn build-store-ios:prd && doppler run --project mobile --config prd -- eas submit --platform ios --profile prd-internal --path ./app-build.ipa');
   add('deploy-store-android',
     'yarn build-store-android && doppler run --project mobile --config \${ENV:-stg} -- eas submit --platform android --profile \${ENV:-stg} --path ./app-build.aab');
   add('deploy-store-android:prd', 'ENV=prd yarn deploy-store-android');
+  add('deploy-store-android:prd-internal', 'yarn build-store-android:prd && doppler run --project mobile --config prd -- eas submit --platform android --profile prd-internal --path ./app-build.aab');
   add('deploy-store-all', 'yarn deploy-store-android && yarn deploy-store-ios');
   add('deploy-store-all:prd', 'ENV=prd yarn deploy-store-all');
+  add('deploy-store-all:prd-internal', 'yarn deploy-store-android:prd-internal && yarn deploy-store-ios:prd-internal');
   add('generate:open-api-spec',
     "bash -c 'mkdir -p node_modules/@ksairi-org/react-query-sdk/specs && EXPO_PUBLIC_SUPABASE_API_KEY=$(grep ^SUPABASE_SERVICE_ROLE_KEY= .env | cut -d= -f2-) node --env-file=.env node_modules/@ksairi-org/react-query-sdk/scripts/generate-open-api-spec.js'");
   add('generate:open-api-hooks',
@@ -329,6 +332,8 @@ node -e "
   add('i18n:extract', 'lingui extract');
   add('i18n:compile', 'lingui compile');
   add('i18n', 'yarn i18n:extract && yarn i18n:compile');
+  add('postinstall', 'yarn i18n:compile');
+  add('doctor', 'expo-doctor');
 
   // Upgrade lint to include --fix if not already
   if (pkg.scripts['lint'] && !pkg.scripts['lint'].includes('--fix')) {
@@ -627,7 +632,8 @@ for _pkg in jest-expo "@types/jest" "@testing-library/react-native" \
             husky tsx \
             react-native-svg-transformer babel-plugin-inline-import \
             prettier eslint-config-prettier \
-            "@phenomnomnominal/tsquery" inflected; do
+            "@phenomnomnominal/tsquery" inflected \
+            expo-doctor; do
   _needs_install "$_pkg" && _missing_dev_pkgs="$_missing_dev_pkgs $_pkg"
 done
 if [ -n "$_missing_dev_pkgs" ]; then

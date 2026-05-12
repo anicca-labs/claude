@@ -57,11 +57,9 @@
       "args": ["npx", "-y", "@upstash/context7-mcp@latest"]
     },
     "revenuecat": {
-      "type": "http",
-      "url": "https://mcp.revenuecat.ai/mcp",
-      "headers": {
-        "Authorization": "Bearer ${RC_MCP_API_KEY}"
-      }
+      "type": "stdio",
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
+      "args": ["bash", "-c", "exec npx -y supergateway --streamableHttp https://mcp.revenuecat.ai/mcp --oauth2Bearer \"$RC_MCP_API_KEY\""]
     }
   }
 }

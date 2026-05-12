@@ -56,6 +56,86 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/setup-app.sh"
 claude
 ```
 
+## Production setup (new app)
+
+Delegate as much as possible to EAS — it handles certificates, provisioning profiles, App Store app creation, and keystore management automatically.
+
+> **i18n compiled catalogs:** add `"postinstall": "yarn i18n:compile"` to `package.json` scripts so EAS compiles catalogs after `yarn install` in its temp build directory. Without this, Metro will fail to resolve `locales/compiled/en` since the compiled output is gitignored.
+
+### 1. iOS — App Store Connect API key (do this first)
+
+Create an App Store Connect API key with **App Manager** role and give it to EAS:
+
+```bash
+eas credentials --platform ios
+# Choose: "Add new App Store Connect API Key" → paste Key ID + Issuer ID + upload .p8
+```
+
+With this in place, EAS will automatically:
+
+- Register the bundle ID in the Apple Developer portal
+- Create the app in App Store Connect (sets `ascAppId` in `eas.json`)
+- Generate and manage provisioning profiles and certificates
+- No Xcode or manual portal work needed
+
+### 2. Android — let EAS manage the keystore
+
+On first `eas build --platform android`, EAS generates and stores the keystore automatically. After the build, get the SHA-1 it used:
+
+```bash
+eas credentials --platform android  # shows the SHA-1 fingerprint
+```
+
+Add it to Firebase → Authentication → Google → re-enable to create the Android OAuth client.
+
+### 3. What still requires manual steps
+
+| Step | Where |
+| --- | --- |
+| Apple Merchant ID (Apple Pay) | [developer.apple.com](https://developer.apple.com) → Identifiers → Merchant IDs |
+| RC iOS In-App Purchase key | App Store Connect → Users & Access → Integrations → In-App Purchase |
+| RC Android service account | Google Cloud Console → IAM → Service Accounts → download JSON → Play Console → Users & permissions → grant access |
+| RC paywalls | `app.revenuecat.com` → Paywalls → New (dashboard only, no API) |
+
+### 4. RevenueCat — platform-specific API keys
+
+RC requires separate public SDK keys per platform. Use `Platform.OS` in `configureRevenueCat`:
+
+```ts
+// src/services/revenue-cat/index.ts
+const apiKey =
+  Platform.OS === 'android' && process.env.EXPO_PUBLIC_RC_ANDROID_API_KEY
+    ? process.env.EXPO_PUBLIC_RC_ANDROID_API_KEY
+    : process.env.EXPO_PUBLIC_RC_API_KEY
+```
+
+Set both `REVENUECAT_API_KEY` (iOS `appl_…`) and `REVENUECAT_ANDROID_API_KEY` (Android `goog_…`) in Doppler prd. Stg can use a single `test_…` key for both platforms.
+
+### 5. Release workflow
+
+| Script | What it does |
+| --- | --- |
+| `yarn dev-client-ios` / `yarn dev-client-android` | Build a dev client for stg (simulator / device) |
+| `yarn dev-client-ios:prd` / `yarn dev-client-android:prd` | Build a dev client for prd (real purchases, real auth) |
+| `yarn build-store-ios:prd` / `yarn build-store-android:prd` | Build a production IPA / AAB without submitting |
+| `yarn deploy-store-all:prd-internal` | **Recommended release flow** — build prd + submit to TestFlight / Play internal testing for final verification with real purchases |
+| `yarn deploy-store-all:prd` | Submit directly to App Store / Play Store production (use only after `prd-internal` sign-off) |
+
+**Recommended release steps:**
+
+```bash
+# 1. Build + submit to internal testing (real purchases, closed testers)
+yarn deploy-store-all:prd-internal
+
+# 2. Testers verify on TestFlight / Play internal track
+
+# 3. Promote to production — from the console, not CLI
+#    Android: Play Console → Internal testing → Promote release → Production
+#    iOS: App Store Connect → TestFlight build → Submit for Review
+```
+
+Fill in `YOUR_STG_ASC_APP_ID` and `YOUR_PRD_ASC_APP_ID` in `eas.json` with the numeric App IDs from App Store Connect → App Information.
+
 ## Install (existing project)
 
 ```bash

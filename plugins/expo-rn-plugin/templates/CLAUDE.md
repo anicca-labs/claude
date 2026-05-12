@@ -3,15 +3,10 @@
 ## Never do
 
 - `any`, `as` casts, `eslint-disable` — fix at source
-- Raw hex/rgba in Tamagui props — use `$token` references only
-- Hardcoded numeric dimensions (padding, margin, fontSize, width, height, borderRadius, gap) — in Tamagui props use `$sm`/`$md`/`$lg` tokens; in non-Tamagui style objects import `sizes`/`radius` from `@theme`
-- Raw `Text` with manual `fontSize` — use semantic components from `@fonts` (Heading, Body, Label variants)
-- `StyleSheet.create()` — use Tamagui `styled()`
-- Inline `style={{…}}` props on non-Tamagui components — wrap with `styled()` from `@tamagui/core` and use token props on the wrapper
+- Tamagui: no hardcoded colors/dims, no `StyleSheet.create()`, no inline `style={{…}}` — use `$tokens` and `styled()` everywhere; raw `Text` → `@fonts` semantic components (Heading, Body, Label variants)
+- `react-native` / `expo-image` primitives when a Tamagui or `@ksairi-org/` equivalent exists — priority: tamagui → `@ksairi-org/` → project-local → `react-native`
 - `FlatList` — use `FlashList` with `estimatedItemSize`
 - `TouchableOpacity` / `Pressable` — use your team's touchable wrapper
-- Raw `expo-image` — use your team's image wrapper (if any)
-- `react-native` UI primitives when a Tamagui or `@ksairi-org/` equivalent exists — priority: tamagui → `@ksairi-org/` → project-local → `react-native` → third party
 - `KeyboardAvoidingView` — use `react-native-keyboard-controller`
 - `Alert.alert` for non-destructive feedback — use `burnt.toast()`
 - `npm` / `npx` / `pnpm` — always `yarn`
@@ -25,14 +20,13 @@
 - Put logic in route files — route files are thin wrappers (`export { default } from '@screens/FooScreen'`); all UI lives in `src/screens/`
 - Network calls in Zustand stores — server state → react-query hooks in `src/hooks/`; Zustand is for UI/local state + MMKV persistence only
 - Raw `supabase.auth.*` in screens or stores — encapsulate in a dedicated auth hook
-- Use `src/lib/` — the correct directory is `src/services/` (with `analytics/`, `firebase-messaging/`, `supabase/` sub-modules)
-- Name stores directory `src/store/` (singular) — always `src/stores/` (plural) with `utils.ts` for `createZustandMmkvStorage`
-- Leave Expo boilerplate directories at root — `components/`, `hooks/`, `constants/` at root are Expo scaffolding; clean them up or move to `src/`
+- Use `src/lib/` — correct dirs are `src/services/{supabase,analytics,firebase-messaging}/` and `src/stores/` (plural) with `utils.ts` for `createZustandMmkvStorage`
 
 ## Always do
 
 - Run `tsc --noEmit` after every change — zero errors before done
 - Run `yarn expo install --check` after adding packages — fixes SDK version mismatches before they break builds
+- Run `yarn doctor` before triggering any store build — catches duplicate native modules early
 - Wrap user-visible strings: `<Trans>` in JSX, `` t`…` `` for props (import from `@lingui/react/macro`)
 - Keep files under 500 lines
 - One `import` statement per module path

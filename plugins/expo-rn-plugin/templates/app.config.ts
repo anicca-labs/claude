@@ -13,7 +13,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: process.env.APP_IDENTIFIER ?? "com.example.myapp",
-    buildNumber: "1",
     googleServicesFile: process.env.GOOGLE_SERVICES_INFOPLIST_PATH,
     infoPlist: {
       UIBackgroundModes: ["fetch", "remote-notification"],
@@ -29,7 +28,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: process.env.APP_IDENTIFIER ?? "com.example.myapp",
-    versionCode: 1,
     adaptiveIcon: {
       foregroundImage: "./assets/images/adaptive-icon.png",
       backgroundColor: "#ffffff",
