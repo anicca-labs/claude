@@ -924,6 +924,27 @@ node -e "
 [ -n "$SUPABASE_REF" ]       && echo "→ Patched CLAUDE.md with Supabase project ref"
 [ -n "$SENTRY_PROJECT_VAL" ] && echo "→ Patched CLAUDE.md with Sentry project"
 
+# ── Git branches ──────────────────────────────────────────────────────────────
+if git -C "$APP_ROOT" rev-parse --git-dir &>/dev/null; then
+  _current_branch=$(git -C "$APP_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+  if git -C "$APP_ROOT" show-ref --verify --quiet refs/heads/stg; then
+    echo "→ Branch 'stg' already exists"
+  else
+    git -C "$APP_ROOT" checkout -b stg
+    echo "→ Created and checked out branch 'stg'"
+    # Push stg so CI branch triggers work from day one
+    if git -C "$APP_ROOT" remote get-url origin &>/dev/null; then
+      git -C "$APP_ROOT" push -u origin stg
+      echo "→ Pushed 'stg' to origin"
+    fi
+    # Return to previous branch (usually main)
+    [ -n "$_current_branch" ] && git -C "$APP_ROOT" checkout "$_current_branch"
+  fi
+  unset _current_branch
+else
+  echo "  ⚠ Not a git repository — skipping branch setup. Run 'git init' first."
+fi
+
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "✓ Done. Next steps:"
