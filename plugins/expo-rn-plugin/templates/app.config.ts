@@ -7,6 +7,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
+  splash: {
+    image: "./assets/images/splash.png",
+    resizeMode: "contain",
+    backgroundColor: "#ffffff",
+  },
   scheme: process.env.APP_SCHEMA ?? "my-app",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
@@ -65,15 +70,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           useFrameworks: "static",
           forceStaticLinking: ["RNFBApp", "RNFBAnalytics", "RNFBMessaging"],
         },
-      },
-    ],
-    [
-      "expo-splash-screen",
-      {
-        image: "./assets/images/icon.png",
-        imageWidth: 200,
-        resizeMode: "contain",
-        backgroundColor: "#ffffff",
       },
     ],
     "expo-secure-store",

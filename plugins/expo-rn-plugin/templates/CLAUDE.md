@@ -53,11 +53,19 @@ Run `/expo-rn-plugin:coding-standards` to load full standards. Quick pointers:
 
 When a pattern isn't covered here, check [ksairi-org/virtual-wallet](https://github.com/ksairi-org/virtual-wallet) — the canonical production app built on this stack.
 
+## Splash screen assets (designer spec)
+
+Both assets **must have transparent backgrounds** — the app's theme controls the background color at runtime via `splash.backgroundColor` in `app.config.ts`.
+
+- **`assets/images/splash.png`** — static first frame, shown by the OS before JS loads. Export directly from the Rive first frame (same logo, same size, same position). Transparent background. `resizeMode: contain` scales it identically to the Rive on all screen sizes.
+- **`assets/animations/splash.riv`** — Rive animation. Transparent artboard background. Animation name: `Settle` (or project equivalent). First frame must be pixel-identical to `splash.png` for a seamless transition.
+- **Code:** use `Fit.Contain` + `Alignment.Center` in `SplashView`. Do NOT use `imageWidth` in `app.config.ts` — the top-level `splash` field with `resizeMode: contain` auto-matches the Rive across all screen sizes. Use `@ksairi-org/react-native-splash-view` ≥ 0.1.7.
+
 ## Project context
 
 <!-- Fill in: API base URL, Supabase project ref, Sentry project, Figma file ID -->
 
-- DB schema: `api` (not `public`)
+- DB schema: `api` (not `public`); every `CREATE TABLE` migration must include explicit GRANTs (`anon`, `authenticated`, `service_role`) + `enable row level security` — Supabase drops auto-grants for new tables from 2026-05-30 / 2026-10-30. The `generate_migration` tool adds this automatically.
 - **Routes:** `app/` (expo-router) — route files are 1-line wrappers; screens in `src/screens/`
 - **Components:** atomic design — `src/components/{atoms,molecules,organisms}/`
 - **Services:** `src/services/{supabase,analytics,firebase-messaging}/` — never `src/lib/`
