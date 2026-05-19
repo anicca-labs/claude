@@ -62,7 +62,7 @@ Both assets **must have transparent backgrounds** — the app's theme controls t
 - **`assets/images/splash.png`** — static first frame shown by the OS before JS loads. Export directly from the Rive first frame; must be pixel-identical for a seamless transition.
 - **`assets/animations/splash.riv`** — Rive animation. Transparent artboard background. Animation name: `Settle` (or project equivalent).
 - **Code:** use `@ksairi-org/react-native-splash-view` in `app/_layout.tsx`. Set `animationViewStyle` for Android only: `Platform.OS === "android" ? { width: 288, height: 288, alignSelf: "center" } : undefined` — matches the native splash size (288dp is the Android 12+ icon clip limit; larger values clip without enlarging).
-- **`app.config.ts`:** iOS → top-level `splash` key (`resizeMode: contain`, `backgroundColor`). Android → `expo-splash-screen` plugin with `imageWidth: 288` and `backgroundColor`. Never configure iOS via the plugin — it breaks the seamless transition.
+- **`app.config.ts`:** use the `expo-splash-screen` plugin for both platforms. iOS: `enableFullScreenImage_legacy: true` + `backgroundColor` + `image`. Android: `imageWidth: 288` + `backgroundColor` + `image` (288dp is the Android 12+ clip limit). Do not use the top-level `splash` key — the plugin supersedes it.
 
 ## Project context
 
