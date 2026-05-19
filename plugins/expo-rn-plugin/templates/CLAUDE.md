@@ -3,10 +3,12 @@
 ## Never do
 
 - `any`, `as` casts, `eslint-disable` — fix at source
-- Tamagui: no hardcoded colors/dims, no `StyleSheet.create()`, no inline `style={{…}}` — use `$tokens` and `styled()` everywhere; raw `Text` → `@fonts` semantic components (Heading, Body, Label variants)
+- Tamagui: no hardcoded colors/dims, no `StyleSheet.create()`, no inline `style={{…}}` — use `$tokens` and `styled()` everywhere; raw `Text` → `@fonts` semantic components (Heading, Body, Label variants); set `disableExtraction: true` in `@tamagui/babel-plugin` (Babel can't resolve TS path aliases → empty extraction cache → "Missing theme" crash in production)
 - `react-native` / `expo-image` primitives when a Tamagui or `@ksairi-org/` equivalent exists — priority: tamagui → `@ksairi-org/` → project-local → `react-native`
 - `FlatList` — use `FlashList` with `estimatedItemSize`
 - `TouchableOpacity` / `Pressable` — use your team's touchable wrapper
+- `GoogleSigninButton` — it ignores text alignment; use a custom `BaseTouchable` + inline SVG Google logo (`react-native-svg`)
+- `AppleButton` on Android — it's iOS-only; render a custom `BaseTouchable` + `FontAwesome` apple icon gated on `Platform.OS === 'android' && !!process.env.EXPO_PUBLIC_ANDROID_APPLE_SIGN_IN_CLIENT_ID`
 - `KeyboardAvoidingView` — use `react-native-keyboard-controller`
 - `Alert.alert` for non-destructive feedback — use `burnt.toast()`
 - `npm` / `npx` / `pnpm` — always `yarn`
@@ -55,11 +57,12 @@ When a pattern isn't covered here, check [ksairi-org/virtual-wallet](https://git
 
 ## Splash screen assets (designer spec)
 
-Both assets **must have transparent backgrounds** — the app's theme controls the background color at runtime via `splash.backgroundColor` in `app.config.ts`.
+Both assets **must have transparent backgrounds** — the app's theme controls the background color at runtime.
 
-- **`assets/images/splash.png`** — static first frame, shown by the OS before JS loads. Export directly from the Rive first frame (same logo, same size, same position). Transparent background. `resizeMode: contain` scales it identically to the Rive on all screen sizes.
-- **`assets/animations/splash.riv`** — Rive animation. Transparent artboard background. Animation name: `Settle` (or project equivalent). First frame must be pixel-identical to `splash.png` for a seamless transition.
-- **Code:** use `Fit.Contain` + `Alignment.Center` in `SplashView`. Do NOT use `imageWidth` in `app.config.ts` — the top-level `splash` field with `resizeMode: contain` auto-matches the Rive across all screen sizes. Use `@ksairi-org/react-native-splash-view` ≥ 0.1.7.
+- **`assets/images/splash.png`** — static first frame shown by the OS before JS loads. Export directly from the Rive first frame; must be pixel-identical for a seamless transition.
+- **`assets/animations/splash.riv`** — Rive animation. Transparent artboard background. Animation name: `Settle` (or project equivalent).
+- **Code:** use `@ksairi-org/react-native-splash-view` in `app/_layout.tsx`. Set `animationViewStyle` for Android only: `Platform.OS === "android" ? { width: 288, height: 288, alignSelf: "center" } : undefined` — matches the native splash size (288dp is the Android 12+ icon clip limit; larger values clip without enlarging).
+- **`app.config.ts`:** iOS → top-level `splash` key (`resizeMode: contain`, `backgroundColor`). Android → `expo-splash-screen` plugin with `imageWidth: 288` and `backgroundColor`. Never configure iOS via the plugin — it breaks the seamless transition.
 
 ## Project context
 
