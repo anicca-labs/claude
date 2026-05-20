@@ -1,6 +1,6 @@
 {
   "enabledPlugins": {
-    "expo-rn-plugin@ksairi": true
+    "expo-rn-plugin@ksairi-org": true
   },
   "permissions": {
     "allow": [

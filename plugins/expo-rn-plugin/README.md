@@ -117,6 +117,7 @@ Set both `REVENUECAT_API_KEY` (iOS `appl_…`) and `REVENUECAT_ANDROID_API_KEY` 
 | --- | --- |
 | `yarn dev-client-ios` / `yarn dev-client-android` | Build a dev client for stg (simulator / device) |
 | `yarn dev-client-ios:prd` / `yarn dev-client-android:prd` | Build a dev client for prd (real purchases, real auth) |
+| `yarn build-apk` / `yarn build-apk:prd` | Build a bundled APK for Android emulator/device — use this instead of the dev client when testing anything affected by Metro latency (splash screen, startup time, asset loading). iOS dev-client-ios already bundles JS via Xcode so no equivalent needed. |
 | `yarn build-store-ios:prd` / `yarn build-store-android:prd` | Build a production IPA / AAB without submitting |
 | `yarn deploy-store-all:prd-internal` | **Recommended release flow** — build prd + submit to TestFlight / Play internal testing for final verification with real purchases |
 | `yarn deploy-store-all:prd` | Submit directly to App Store / Play Store production (use only after `prd-internal` sign-off) |
@@ -190,6 +191,7 @@ Skills with a matching project command (e.g. `/form`) can also be invoked via th
 | `coding-standards`       | —               | Load project coding standards on demand (TypeScript, Tamagui, Zustand, Lingui)                                                                                                 |
 | `analytics`              | —               | Load analytics standards — event naming, screen tracking, user identification, privacy rules (Firebase default; PostHog, Amplitude alternatives)                               |
 | `testing`                | —               | Write or fix component and hook tests using jest-expo and @testing-library/react-native                                                                                        |
+| `animations`             | —               | Animation standards — react-native-reanimated for UI motion, Rive for illustration/splash, rules for when to use each                                                          |
 | `libs`                   | —               | _(optional)_ Full reference for `@ksairi-org/*` libraries fetched live from GitHub. Load before writing any utility, hook, or layout code if your project uses these packages. |
 
 ### Project commands (standalone, no skill file)

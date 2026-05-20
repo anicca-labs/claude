@@ -138,6 +138,22 @@ const firstName = useUserStore((state) => state.firstName);
 const store = useUserStore();
 ```
 
+## Environment Badge
+
+Every app must render an `EnvBadge` in the root layout. It reads `EXPO_PUBLIC_ENV` and shows an amber "STAGING" pill overlay in the top-right corner when the env is not `prd`. It renders nothing in production, so there is no cost to keeping it in the tree.
+
+Mount it as a sibling of `<SplashView />` in `app/_layout.tsx`:
+
+```tsx
+import { EnvBadge } from "@atoms";
+
+// Inside RootLayout return, alongside SplashView:
+<EnvBadge />
+<SplashView ... />
+```
+
+The component lives at `src/components/atoms/EnvBadge/index.tsx` and is exported from `@atoms`.
+
 ## Env Vars / Doppler
 
 - Secrets via Doppler — project `mobile`, configs `dev` / `stg` / `prd`
