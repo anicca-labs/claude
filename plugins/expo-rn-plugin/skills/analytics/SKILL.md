@@ -19,18 +19,26 @@ Alternatives:
 
 ## Abstraction layer (required)
 
-Never call the provider SDK directly in components. Always go through a central `src/analytics/index.ts`:
+Never call the provider SDK directly in components. Always go through a central `src/services/analytics/index.ts` using the Firebase v9 modular API:
 
 ```ts
-// src/analytics/index.ts
-import analytics from '@react-native-firebase/analytics';
+// src/services/analytics/index.ts
+import { getApp } from '@react-native-firebase/app';
+import {
+  getAnalytics,
+  logEvent,
+  setUserId,
+  logScreenView,
+} from '@react-native-firebase/analytics';
+
+const getA = () => getAnalytics(getApp());
 
 export const Analytics = {
-  identify: (userId: string) => analytics().setUserId(userId),
-  reset: () => analytics().setUserId(null),
-  screen: (name: string) => analytics().logScreenView({ screen_name: name, screen_class: name }),
+  identify: (userId: string) => setUserId(getA(), userId),
+  reset: () => setUserId(getA(), null),
+  screen: (name: string) => logScreenView(getA(), { screen_name: name, screen_class: name }),
   track: (event: string, params?: Record<string, string | number | boolean>) =>
-    analytics().logEvent(event, params),
+    logEvent(getA(), event, params),
 };
 ```
 
@@ -45,19 +53,24 @@ This lets you swap providers without touching call sites.
 
 ## Screen tracking
 
-Wire to the Expo Router navigation state — do not call `Analytics.screen()` manually in each screen:
+Wire to the Expo Router navigation state — do not call `Analytics.screen()` manually in each screen. Create an `AnalyticsProvider` in `app/_layout.tsx` and wrap `<RootLayoutNav />` with it:
 
-```ts
+```tsx
 // app/_layout.tsx
 import { usePathname } from 'expo-router';
 import { useEffect } from 'react';
-import { Analytics } from '@/analytics';
+import { Analytics } from '@services/analytics';
 
-export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
+function AnalyticsProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   useEffect(() => { Analytics.screen(pathname); }, [pathname]);
   return <>{children}</>;
 }
+
+// Inside RootLayout:
+<AnalyticsProvider>
+  <RootLayoutNav />
+</AnalyticsProvider>
 ```
 
 ## User identification

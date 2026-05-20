@@ -10,25 +10,42 @@ Use the Sentry MCP (`mcp__sentry__*`) to query production errors, releases, and 
 - `EXPO_PUBLIC_ENV` in Doppler (`stg` / `prd`) — used as the Sentry environment tag
 - `SENTRY_DSN` in Doppler → `.env` as `EXPO_PUBLIC_SENTRY_DSN`
 - `SENTRY_AUTH_TOKEN` in Doppler (for source map uploads during EAS builds)
-- `SENTRY_ORG` and `SENTRY_PROJECT` set in Doppler and `mcp.config.json`
+- `SENTRY_ORG` and `SENTRY_PROJECT` set in Doppler and `.mcp.json`
 - Create `src/services/sentry/index.ts` with `setupSentry(isEnabled)` — keep `_layout.tsx` clean
 - Add `"@sentry": ["src/services/sentry/index.ts"]` to `tsconfig.json` paths
 - One Sentry project per app, two environments (`stg` + `prd`) — not two projects
 
 ## Canonical initialisation
 
+Keep `_layout.tsx` clean — put init logic in the service module:
+
+```ts
+// src/services/sentry/index.ts
+import * as Sentry from '@sentry/react-native';
+
+export function setupSentry(enabled: boolean) {
+  Sentry.init({
+    enabled,
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+    environment: process.env.EXPO_PUBLIC_ENV, // "stg" | "prd"
+    tracesSampleRate: 0.2,
+  });
+}
+```
+
 ```ts
 // app/_layout.tsx
-import * as Sentry from "@sentry/react-native";
+import * as Sentry from '@sentry/react-native';
+import { setupSentry } from '@sentry';
 
-Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-  environment: process.env.EXPO_PUBLIC_ENV, // "stg" | "prod"
-  tracesSampleRate: __DEV__ ? 0 : 0.2,
-});
+setupSentry(!__DEV__);
+
+// ...
 
 export default Sentry.wrap(RootLayout);
 ```
+
+The `enabled` prop is the correct way to disable Sentry in dev — do not conditionally zero `tracesSampleRate` as a substitute.
 
 ## Capture patterns
 

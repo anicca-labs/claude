@@ -113,6 +113,48 @@ import splash from "../assets/animations/splash.riv";
 
 Place `SplashView` as the last child inside `QueryClientProvider` (outside all navigation providers) so it overlays the entire screen. The 288dp `animationViewStyle` is Android-only — it matches the 288dp Android 12+ native splash icon clip limit for a seamless transition.
 
+**Critical:** never gate `SplashView` behind a `fontsLoaded` check. Only gate the navigation/content behind it — `SplashView` must render on the very first React render so it covers the screen before the native overlay is dismissed:
+
+```tsx
+// ✅ correct
+if (!fontsLoaded) return null; // ← remove this early return
+
+return (
+  <QueryClientProvider ...>
+    ...
+    {fontsLoaded ? <RootLayoutNav /> : null}  // ← gate content, not SplashView
+    <SplashView ... />
+  </QueryClientProvider>
+);
+```
+
+Gating `SplashView` on font load causes a visible flash of the unstyled root view between native splash dismissal and the JS overlay appearing.
+
+**Testing splash without a dev client:** the dev client loads the JS bundle over Metro (~1s), which amplifies any native overlay flash and is not representative of production. Use embedded-bundle builds to test splash behavior accurately:
+
+Add to `eas.json`:
+```json
+"preview-simulator": {
+  "distribution": "internal",
+  "ios": { "simulator": true }
+}
+```
+
+Add to `package.json` scripts:
+```json
+"build-sim": "yarn pre-build && doppler run ... -- eas build --platform ios --profile preview-simulator --local",
+"build-sim:prd": "ENV=prd yarn build-sim",
+"build-ipa": "yarn pre-build && doppler run ... -- eas build --platform ios --profile preview --local",
+"build-ipa:prd": "ENV=prd yarn build-ipa"
+```
+
+After `build-sim` finishes, install on the running simulator:
+```sh
+tar -xf <output.tar.gz>
+xcrun simctl install booted <path-to.app>
+xcrun simctl launch booted <bundle-id>
+```
+
 ## When to use which
 
 | Use case | Library |

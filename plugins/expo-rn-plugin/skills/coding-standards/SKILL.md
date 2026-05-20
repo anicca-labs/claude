@@ -96,13 +96,19 @@ import { Containers } from '@ksairi-org/ui-containers'
 ## Tamagui
 
 - Main config: `src/theme/tamagui.config.ts`; themes: `src/theme/themes.ts`
-- Tokens use kebab-case: `$surface-app`, `$text-primary` — always check `themes.ts` before using
+- Color tokens use semantic kebab-case names — always check `themes.ts` before using. Standard scale: `$surface-app`, `$surface-card`, `$surface-subtle`, `$surface-hover`, `$surface-pressed`, `$border-subtle`, `$border-default`, `$text-disabled`, `$text-placeholder`, `$text-tertiary`, `$text-secondary`, `$text-emphasis`
 - `allowedStyleValues: "strict"` — only token values; raw hex/rgba will error at compile time
 - Spacing/sizing: `$sm`, `$md`, `$lg` from `sizesSpaces`; radius from `radius` tokens
 - Never use Tamagui color props with raw strings
 - Typography: use components from `src/components/` — no raw `<Text>` with style props
-- Never use `StyleSheet.create()` — use Tamagui `styled()`
+- Never use `StyleSheet.create()` — use Tamagui `styled()`. If a third-party component's API forces a plain style object (e.g. a `style` prop that only accepts `StyleSheet` output), add a `// NOTE: StyleSheet required — <reason>` comment and surface it to the user so they can decide whether to accept it.
 - Never add inline style props to non-Tamagui components — wrap with `styled()` from `@tamagui/core` first, then use token-based style props on the wrapper
+
+### Tamagui theme config rules (avoid these two mistakes)
+
+**Never put theme values in `createTokens`** — `color: themes.light` in `createTokens` locks every `$color*` reference to the light value regardless of active theme, breaking dark mode. Color tokens belong only in the `themes` object; `createTokens` should only contain spacing, sizing, radius, and font tokens.
+
+**Never use `as` type assertions on theme objects** — `} as typeof defaultConfig.themes.light` erases your custom token names from TypeScript's view, so `$surface-card` etc. won't typecheck. Remove the assertion and let TypeScript infer the full type — `createTamagui` propagates it automatically to `GetThemeValueForKey`.
 
 ## Zustand — state ownership
 
@@ -147,7 +153,7 @@ Mount it as a sibling of `<SplashView />` in `app/_layout.tsx`:
 ```tsx
 import { EnvBadge } from "@atoms";
 
-// Inside RootLayout return, alongside SplashView:
+// Inside RootLayout return — EnvBadge must come before SplashView so it renders on top once the splash fades:
 <EnvBadge />
 <SplashView ... />
 ```
