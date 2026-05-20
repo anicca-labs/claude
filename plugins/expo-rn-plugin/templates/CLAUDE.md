@@ -8,7 +8,7 @@
 - `FlatList` — use `FlashList` with `estimatedItemSize`
 - `TouchableOpacity` / `Pressable` — use your team's touchable wrapper
 - `GoogleSigninButton` — it ignores text alignment; use a custom `BaseTouchable` + inline SVG Google logo (`react-native-svg`)
-- `AppleButton` on Android — it's iOS-only; render a custom `BaseTouchable` + `FontAwesome` apple icon gated on `Platform.OS === 'android' && !!process.env.EXPO_PUBLIC_ANDROID_APPLE_SIGN_IN_CLIENT_ID`
+- `AppleButton` on Android — it's iOS-only; render a custom `BaseTouchable` + `FontAwesome` apple icon gated on `Platform.OS === 'android' && !!process.env.EXPO_PUBLIC_ANDROID_APPLE_SIGN_IN_CLIENT_ID`; hardcode `bg="black"` — semantic tokens like `$color12` invert in dark mode making white text invisible
 - `KeyboardAvoidingView` — use `react-native-keyboard-controller`
 - `Alert.alert` for non-destructive feedback — use `burnt.toast()`
 - `npm` / `npx` / `pnpm` — always `yarn`
@@ -31,7 +31,6 @@
 - Run `yarn doctor` before triggering any store build — catches duplicate native modules early
 - Wrap user-visible strings: `<Trans>` in JSX, `` t`…` `` for props (import from `@lingui/react/macro`)
 - Keep files under 500 lines
-- One `import` statement per module path
 
 ## Stack quick-ref
 
@@ -63,6 +62,7 @@ Both assets **must have transparent backgrounds** — the app's theme controls t
 - **`assets/animations/splash.riv`** — Rive animation. Transparent artboard background. Animation name: `Settle` (or project equivalent).
 - **Code:** use `@ksairi-org/react-native-splash-view` in `app/_layout.tsx`. Set `animationViewStyle` for Android only: `Platform.OS === "android" ? { width: 288, height: 288, alignSelf: "center" } : undefined` — matches the native splash size (288dp is the Android 12+ icon clip limit; larger values clip without enlarging).
 - **`app.config.ts`:** use the `expo-splash-screen` plugin. Hoist `backgroundColor`, `image`, and `dark.backgroundColor` to the top level (shared); put only platform-specific overrides in `ios` / `android` keys. iOS: `enableFullScreenImage_legacy: true`. Android: `imageWidth: 288` (Android 12+ clip limit). The `dark` key is natively supported (iOS 13+, Android 10+) — no custom config plugin needed. Do not use the top-level `splash` key — the plugin supersedes it.
+- **Android splash icon circle background** is not reliably controllable — Samsung and other OEMs override `windowSplashScreenIconBackgroundColor` and ignore `values-night/` overrides for `iconBackground`. Accept the limitation; the circle is visible for under 1 s before the Rive animation.
 
 ## Project context
 
