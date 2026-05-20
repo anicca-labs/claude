@@ -85,6 +85,8 @@ import { Containers } from '@ksairi-org/ui-containers'
 - Use `Trans` + `t` for every hardcoded user-visible string
 - Use `` t`…` `` for prop strings (placeholders, aria labels, alert titles)
 - Import `Trans, useLingui` from `@lingui/react/macro`
+- Always commit `src/i18n/locales/compiled/*.ts` after running `yarn i18n` — the `pre-build` script reruns compilation; if the committed file differs from what the installed lingui version emits (e.g. lingui 6 adds `/*eslint-disable*/`), every build will produce a dirty tree
+- After upgrading `@lingui/cli`, run `yarn i18n:compile` and commit the result before the next build
 
 ## General
 
@@ -155,6 +157,14 @@ const store = useUserStore();
 
 - Always use `FlashList` from `@shopify/flash-list` — never `FlatList`
 - `estimatedItemSize` is required — omitting it causes a warning and degrades performance
+
+## User Feedback (toasts)
+
+- Use `burnt` for all success and error toasts — never `Alert.alert` for transient feedback
+- Success: `Burnt.toast({ title: '…', preset: 'done' })` — auto-dismisses after ~2s
+- Error: `Burnt.toast({ title: '…', preset: 'error' })` — auto-dismisses after ~4s
+- Destructive / irreversible actions → confirmation `Alert.alert` dialog, not a toast
+- Form validation errors → inline under the field, not a toast
 
 ## Dates
 
