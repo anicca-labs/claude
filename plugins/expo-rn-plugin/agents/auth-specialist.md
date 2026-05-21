@@ -38,17 +38,17 @@ You are an authentication specialist for React Native / Expo apps using Supabase
 
 **Confirm password field**: always include a confirm password input in sign-up mode. Validate client-side before submitting — show error inline, don't rely on server rejection.
 
-**Post sign-up feedback**: use `burnt` (already in Expo ecosystem) instead of `Alert` — it's non-blocking and native-feeling:
+**Post sign-up feedback**: use `burnt` on iOS and `ToastAndroid` on Android — `burnt`'s Android module is a stub with no real implementation:
 
 ```ts
 import * as Burnt from 'burnt'
+import { Platform, ToastAndroid } from 'react-native'
 
-Burnt.toast({
-  title: t`Check your email`,
-  message: t`We sent a confirmation link to ${email}.`,
-  preset: 'done',
-  duration: 6,
-})
+if (Platform.OS === 'android') {
+  ToastAndroid.showWithGravity(message, ToastAndroid.LONG, ToastAndroid.CENTER)
+} else {
+  Burnt.toast({ title, message, preset: 'done', duration: 6 })
+}
 ```
 
 After toast, switch back to sign-in mode and clear all fields including confirmPassword.
@@ -59,17 +59,22 @@ After toast, switch back to sign-in mode and clear all fields including confirmP
 
 Supabase email sign-up redirects to `<APP_SCHEME>://#access_token=...&refresh_token=...&type=signup`. The app must handle this manually — `detectSessionInUrl: false` is required for React Native.
 
-Add to the auth session hook (or root layout):
+Add to the auth session hook (or root layout). Handle both PKCE (`?code=`) and implicit (`#access_token=`) flows — Supabase may use either depending on configuration:
 
 ```ts
 import * as Linking from 'expo-linking'
 
 async function handleAuthUrl(url: string) {
-  const hash = url.split('#')[1]
-  if (!hash) return
-  const params = new URLSearchParams(hash)
-  const accessToken = params.get('access_token')
-  const refreshToken = params.get('refresh_token')
+  // PKCE flow: code in query params
+  const code = new URLSearchParams(url.split('?')[1] ?? '').get('code')
+  if (code) {
+    await supabase.auth.exchangeCodeForSession(code)
+    return
+  }
+  // Implicit flow: tokens in hash fragment
+  const hash = new URLSearchParams(url.split('#')[1] ?? '')
+  const accessToken = hash.get('access_token')
+  const refreshToken = hash.get('refresh_token')
   if (accessToken && refreshToken) {
     await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
   }
