@@ -38,16 +38,28 @@ You are an authentication specialist for React Native / Expo apps using Supabase
 
 **Confirm password field**: always include a confirm password input in sign-up mode. Validate client-side before submitting — show error inline, don't rely on server rejection.
 
-**Post sign-up feedback**: use `burnt` on iOS and `ToastAndroid` on Android — `burnt`'s Android module is a stub with no real implementation:
+**Post sign-up feedback**: use a `useToast` hook that wraps `burnt` (iOS) and `ToastAndroid` (Android) — `burnt`'s Android module is a stub with no real implementation. Always use the hook, never call `burnt` directly:
 
 ```ts
-import * as Burnt from 'burnt'
+// src/hooks/useToast.ts
 import { Platform, ToastAndroid } from 'react-native'
+import * as Burnt from 'burnt'
 
-if (Platform.OS === 'android') {
-  ToastAndroid.showWithGravity(message, ToastAndroid.LONG, ToastAndroid.CENTER)
-} else {
-  Burnt.toast({ title, message, preset: 'done', duration: 6 })
+type ToastOptions = { title: string; message?: string; preset?: 'done' | 'error' | 'none'; duration?: number }
+
+export function useToast() {
+  function toast({ title, message, preset = 'done', duration = 5 }: ToastOptions) {
+    if (Platform.OS === 'android') {
+      ToastAndroid.showWithGravity(
+        message ? `${title} — ${message}` : title,
+        ToastAndroid.LONG,
+        ToastAndroid.CENTER,
+      )
+    } else {
+      Burnt.toast({ title, message, preset, duration })
+    }
+  }
+  return { toast }
 }
 ```
 
