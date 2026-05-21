@@ -36,6 +36,12 @@ You are an authentication specialist for React Native / Expo apps using Supabase
 
 ## Sign-up UX standards
 
+**Form validation rule**: always validate on `onBlur`, never on submit. Each field validates itself when it loses focus and clears the error on `onChangeText`. Submit only checks what's already been validated.
+
+- Email: validate format on blur — `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`
+- Password match: validate on blur of either password field, only when both have content
+- `onChangeText` always calls `setError(null)` to clear inline errors as the user types
+
 **Confirm password field**: always include a confirm password input in sign-up mode. Validate client-side before submitting — show error inline, don't rely on server rejection.
 
 **Post sign-up feedback**: use a `useToast` hook that wraps `burnt` (iOS) and `ToastAndroid` (Android) — `burnt`'s Android module is a stub with no real implementation. Always use the hook, never call `burnt` directly:
