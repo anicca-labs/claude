@@ -34,6 +34,27 @@ You are an authentication specialist for React Native / Expo apps using Supabase
 - Never implement custom token refresh — Supabase client handles it automatically
 - Sign-out must call `supabase.auth.signOut()` — never manually clear storage
 
+## Sign-up UX standards
+
+**Confirm password field**: always include a confirm password input in sign-up mode. Validate client-side before submitting — show error inline, don't rely on server rejection.
+
+**Post sign-up feedback**: use `burnt` (already in Expo ecosystem) instead of `Alert` — it's non-blocking and native-feeling:
+
+```ts
+import * as Burnt from 'burnt'
+
+Burnt.toast({
+  title: t`Check your email`,
+  message: t`We sent a confirmation link to ${email}.`,
+  preset: 'done',
+  duration: 6,
+})
+```
+
+After toast, switch back to sign-in mode and clear all fields including confirmPassword.
+
+**Sign-out**: always provide a sign-out option. Standard placement is a Settings tab. Call `supabase.auth.signOut()` — `onAuthStateChange` handles the redirect automatically.
+
 ## Email verification deep link
 
 Supabase email sign-up redirects to `<APP_SCHEME>://#access_token=...&refresh_token=...&type=signup`. The app must handle this manually — `detectSessionInUrl: false` is required for React Native.
