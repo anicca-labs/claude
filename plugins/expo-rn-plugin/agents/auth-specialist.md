@@ -94,6 +94,36 @@ Correct order:
 - Required Play Console permissions: "View app information and download bulk reports", "View financial data, orders, and cancellation survey responses", "Manage orders and subscriptions"
 - The Google Play Android Developer API must be enabled in the GCP project containing the service account
 
+## iOS Keychain persistence after app deletion
+
+The iOS Keychain is **not cleared when the app is deleted**. Supabase stores its session in `expo-secure-store`, which uses the Keychain — so a user who deletes and reinstalls the app will be auto-authenticated with the old session. Android does not have this issue.
+
+Fix: use `AsyncStorage` (wiped on uninstall) as a sentinel. On first launch after a fresh install, purge the local session before restoring it.
+
+```ts
+import AsyncStorage from '@react-native-async-storage/async-storage'
+
+async function clearStaleKeychainOnFreshInstall() {
+  const installed = await AsyncStorage.getItem('app_installed')
+  if (!installed) {
+    await supabase.auth.signOut({ scope: 'local' })
+    await AsyncStorage.setItem('app_installed', '1')
+  }
+}
+```
+
+Call this **before** `supabase.auth.getSession()` in the auth session hook:
+
+```ts
+async function init() {
+  await clearStaleKeychainOnFreshInstall()
+  const { data: { session: s } } = await supabase.auth.getSession()
+  setSession(s)
+}
+```
+
+`scope: 'local'` clears only local storage — no network call, works offline. The old refresh token remains valid on the server until it expires naturally, which is fine here since the goal is UX consistency, not session revocation.
+
 ## Debugging checklist
 
 1. Check `GOOGLE_WEB_CLIENT_ID` / `GOOGLE_IOS_CLIENT_ID` are present in `.env`
