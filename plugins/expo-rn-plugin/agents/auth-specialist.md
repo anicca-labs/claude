@@ -68,6 +68,21 @@ supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${process.e
 
 The redirect URL must be whitelisted in **Supabase dashboard → Authentication → URL Configuration → Redirect URLs**.
 
+## Apple Sign-In Supabase setup
+
+Native iOS Apple Sign-In sets the `aud` claim in the ID token to the app's **bundle ID** (e.g. `com.reflect.prod`), not the Service ID. Supabase must be configured to accept both.
+
+**Supabase dashboard → Authentication → Providers → Apple:**
+
+- **Client ID** (main field): Service ID (e.g. `com.reflect.prod.sign-in`) — used for web OAuth
+- **Additional Client IDs**: bundle ID (e.g. `com.reflect.prod`) — required for native iOS Sign-In
+
+Without this, `signInWithIdToken` fails with `"unacceptable audience in id_token"`.
+
+Keep stg and prd Supabase projects separate — each should only have its own bundle ID in Additional Client IDs.
+
+Also declare `"com.apple.developer.applesignin": ["Default"]` in `app.config.ts` iOS entitlements — without it simulator builds fail with `ASAuthorizationErrorUnknown` (error 1000) even with an Apple ID signed in.
+
 ## Google Sign-In GCP project setup
 
 **Always set up Google Sign-In through Firebase first**, not by creating a standalone GCP project. This avoids cross-project OAuth mismatches.
