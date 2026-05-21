@@ -40,7 +40,25 @@ You are an authentication specialist for React Native / Expo apps using Supabase
 
 - Email: validate format on blur — `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`
 - Password match: validate on blur of either password field, only when both have content
-- `onChangeText` always calls `setError(null)` to clear inline errors as the user types
+- `onChangeText` always calls the field's own `setError(null)` to clear as the user types
+
+**Per-field errors**: use a `FormField` atom that wraps any input and displays the error directly below it. Never show a single shared error at the bottom of the form — each field owns its error:
+
+```tsx
+// src/components/atoms/FormField/FormField.tsx
+export function FormField({ children, error }: { children: React.ReactNode; error?: string | null }) {
+  return (
+    <YStack>
+      {children}
+      {error ? <LabelSm color="$red10" mt="$1" mb="$2">{error}</LabelSm> : null}
+    </YStack>
+  )
+}
+```
+
+Use separate error states per field (`emailError`, `passwordError`, `authError`) — `authError` is for Supabase/network errors shown below the submit button.
+
+**Enter key submission**: wire `onSubmitEditing` on every input. When `isReady`, submit. When not ready, move focus to the next field. Set `returnKeyType="done"` when ready, `"next"` otherwise. Use `forwardRef` + `useImperativeHandle` on custom input components to expose `focus()`.
 
 **Confirm password field**: always include a confirm password input in sign-up mode. Validate client-side before submitting — show error inline, don't rely on server rejection.
 
