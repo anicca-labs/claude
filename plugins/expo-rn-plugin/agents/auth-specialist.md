@@ -107,7 +107,9 @@ Correct order:
 
 - New service account credentials take **up to 36 hours** to propagate — validation errors immediately after setup are expected
 - Required Play Console permissions: "View app information and download bulk reports", "View financial data, orders, and cancellation survey responses", "Manage orders and subscriptions"
-- The Google Play Android Developer API must be enabled in the GCP project containing the service account
+- Enable both **Google Play Android Developer API** and **Google Play Developer Reporting API** in the GCP project
+- Service account GCP roles: **Pub/Sub Editor** + **Monitoring Viewer** — not Pub/Sub Lite Admin (different service)
+- Upload the service account JSON key **separately to each RevenueCat app** (stg and prd) — they don't share credentials
 
 ## iOS Keychain persistence after app deletion
 
