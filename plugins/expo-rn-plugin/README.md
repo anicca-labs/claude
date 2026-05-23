@@ -193,6 +193,8 @@ Skills with a matching project command (e.g. `/form`) can also be invoked via th
 | `testing`                | —               | Write or fix component and hook tests using jest-expo and @testing-library/react-native                                                                                        |
 | `animations`             | —               | Animation standards — react-native-reanimated for UI motion, Rive for illustration/splash, rules for when to use each                                                          |
 | `libs`                   | —               | _(optional)_ Full reference for `@ksairi-org/*` libraries fetched live from GitHub. Load before writing any utility, hook, or layout code if your project uses these packages. |
+| `iap`                    | —               | Mobile in-app purchases and subscriptions via RevenueCat — setup, customer identification, product configuration for App Store and Google Play                                 |
+| `feature-flags`          | —               | Feature flags via Firebase Remote Config — naming conventions, per-environment values, gradual rollouts, and reading values in the app                                         |
 
 ### Project commands (standalone, no skill file)
 

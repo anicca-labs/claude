@@ -16,12 +16,19 @@ When a pattern isn't covered by these standards, look at **[ksairi-org/virtual-w
 - Never use `any` — use proper types, generics, or type guards
 - Never use `as` assertions — fix types at the source
 - After any code change, run `tsc --noEmit` and fix **all** errors (zero errors is a baseline)
+- Named exports only — no `export default`. One file = one component/hook; the file name and export name match 1:1
+- No `React.FC` — type props inline or with a separate `type Props = {…}`
+- Prefer union types over multiple boolean flags: `type Status = "idle" | "loading" | "error"` instead of `isLoading + hasError`
+- Type/interface names: no `T` or `I` prefix; self-documenting plain English; no abbreviations (except universally known ones like `API`, `URL`)
+- Helper function naming: `get*` / `set*` / `create*` for synchronous; `fetch*` / `post*` / `patch*` / `delete*` for API calls; `is*` / `are*` for type guards and predicates
 
 ## React / Components
 
 - Follow React best practices (hooks, memoization, clean component structure)
 - Never use `eslint-disable-next-line react-hooks/exhaustive-deps` — fix the dependency issue
 - Keep files under **500 lines** — split into sub-components, hooks, or utils proactively
+- Conditional rendering: use ternary (`condition ? <X /> : null`), not `&&` — the `&&` form renders `0` when condition is a falsy number
+- No margin on custom components — margins create invisible coupling between sibling layout. Use `gap` on the parent `YStack`/`XStack`, or `padding` on a container instead
 
 ### UI component import priority
 
@@ -72,7 +79,8 @@ import { Containers } from '@ksairi-org/ui-containers'
 - `shouldAutoResize={false}` — required when the screen already contains its own `ScrollView`
 
 **Buttons specifically** — `@ksairi-org/ui-button` takes priority over Tamagui's `Button`. Never use Tamagui's raw `Button` or react-native touchables for interactive buttons:
-- Primary full-width action → `CTAButton` (has `loading` prop and `spinnerColor`; pass `backgroundColor` from your theme; spinner is Tamagui `Spinner`)
+- Primary full-width action with Tamagui theme tokens → `BaseTouchable` from `@ksairi-org/ui-touchables` with `bg="$token"` — **not** `CTAButton`. `CTAButton` uses `unstyled={true}` on Tamagui's `Button` and the `background` prop does not reliably resolve theme tokens; `BaseTouchable` with `bg` does. Use `opacity={disabled ? 0.4 : 1}` for the disabled visual state and an inline `{loading ? <Spinner /> : children}` guard.
+- Primary full-width action with explicit hex/rgba colors → `CTAButton` (pass `backgroundColor` as a literal color string, not a `$token`; has `loading` prop and `spinnerColor`)
 - Secondary action → `BasicButton` (full `ButtonProps` pass-through, `opacity=0.4` when disabled)
 - Text-only / link-style → `GhostButton` (transparent background, `opacity=0.4` when disabled; pass `color` from your theme)
 - Icon-only → `IconButton` (circular, requires `icon: ReactNode`, full `ButtonProps` pass-through)
@@ -99,10 +107,12 @@ import { Containers } from '@ksairi-org/ui-containers'
 - Color tokens use semantic kebab-case names — always check `themes.ts` before using. Standard scale: `$surface-app`, `$surface-card`, `$surface-subtle`, `$surface-hover`, `$surface-pressed`, `$border-subtle`, `$border-default`, `$text-disabled`, `$text-placeholder`, `$text-tertiary`, `$text-secondary`, `$text-emphasis`
 - `allowedStyleValues: "strict"` — only token values; raw hex/rgba will error at compile time
 - Spacing/sizing: `$sm`, `$md`, `$lg` from `sizesSpaces`; radius from `radius` tokens
+- Use `gap` on `XStack`/`YStack` for whitespace between elements — not `Separator`. `Separator` renders a visible divider line and should only be used when that line is intentional UI. Using `Separator` purely for spacing conflates layout with visual chrome.
 - Never use Tamagui color props with raw strings
 - Typography: use components from `src/components/` — no raw `<Text>` with style props
 - Never use `StyleSheet.create()` — use Tamagui `styled()`. If a third-party component's API forces a plain style object (e.g. a `style` prop that only accepts `StyleSheet` output), add a `// NOTE: StyleSheet required — <reason>` comment and surface it to the user so they can decide whether to accept it.
 - Never add inline style props to non-Tamagui components — wrap with `styled()` from `@tamagui/core` first, then use token-based style props on the wrapper
+- Never use absolute positioning for layout — it breaks safe area handling and adaptive sizing. Only use `position: absolute` for overlays (badges, toasts, FABs) that genuinely need to float above the document flow
 
 ### Tamagui theme config rules (avoid these two mistakes)
 
@@ -118,6 +128,14 @@ import { Containers } from '@ksairi-org/ui-containers'
 | Client/UI state | Zustand |
 
 If data comes from the backend it belongs in react-query. Zustand stores should be thin.
+
+### Client-driven-by-remote pattern (edit flows)
+
+When the user edits remote data (profile, settings, checkout form), the handoff pattern is:
+
+**Fetch → Hydrate local state → Edit → Save**
+
+Use react-query to fetch, then seed a local Zustand slice or `useState` with the result. The user edits the local copy; on save, call the mutation and invalidate the query. Never mutate the react-query cache directly for optimistic edits unless you have a specific reason — local state is simpler and easier to reason about.
 
 ### Store pattern
 
@@ -143,6 +161,20 @@ const firstName = useUserStore((state) => state.firstName);
 // Bad — re-renders on any store change
 const store = useUserStore();
 ```
+
+## Settings Tab
+
+Every app with a tab navigator must include a **Settings tab**. It is the standard home for account-level and device-level controls that don't belong in content screens.
+
+**Required items** (always present):
+
+- **Subscription** — shows current plan (Free / Pro Monthly / Pro Annual) with spinner while RC loads; "Upgrade to Pro ✦" button when free → `presentPaywall()`; "Manage subscription" when pro → `Purchases.showManageSubscriptions()`. See `/expo-rn-plugin:iap` for the full pattern.
+- **Push notification permission** — shows `Granted` / `Denied` status; when denied, tapping opens `Linking.openSettings()` (app-specific settings page on both platforms); uses an `AppState` listener + `openedSettings` ref to re-check the permission when the user returns. See `/notifications` for the full pattern.
+- **Sign out** — always confirm with `Alert.alert` before calling `supabase.auth.signOut()`; use `style: 'destructive'` on the confirm button; placed at the bottom of the screen so it doesn't get tapped by accident
+
+**Growing list** — as new general-purpose controls are identified (e.g. language preference, theme toggle, account deletion), add them here before adding to any content screen.
+
+Do not put permission or account controls in content screens (journal, feed, reflections, etc.) — they belong in Settings.
 
 ## Environment Badge
 
@@ -192,6 +224,52 @@ The component lives at `src/components/atoms/EnvBadge/index.tsx` and is exported
 
 - Format dates with `date-fns` — always pass the locale from `expo-localization` for locale-aware output
 - Never use `Date.toLocaleDateString()` — output varies by device locale settings
+
+## OTA Updates
+
+- OTA updates **only work if no native code changed** since the last full EAS build. The most common cause: a dependency update that includes native modules. When in doubt, do a full build.
+- Control update urgency via the `['expo-updates'].type` field in `app.config.ts`:
+  - `'mandatory'` — shows an alert on launch requiring the user to update before continuing
+  - `'optional'` — silently applies the update on the next cold start (app fully closed and reopened)
+- OTA updates do not work on debug builds — test against a release (internal) build on a simulator or device.
+
+## Assets
+
+- Compress all PNG/JPG/MP4 assets with [ImageOptim](https://imageoptim.com/mac) before committing — typically saves 40–80% with no perceptible quality loss
+- To find all images in the project: `find . -name "*.png" | grep -v node_modules | xargs -I {} cp {} tmp-images`
+
+## Supabase custom schema setup
+
+When using a custom schema (e.g. `api` instead of `public`), two steps are required before the app can query it:
+
+**1. Expose the schema in PostgREST** — Supabase only exposes `public` and `graphql_public` by default. Add your schema via the Management API or the dashboard:
+
+```bash
+# Via Management API (scriptable — use in setup automation)
+curl -X PATCH "https://api.supabase.com/v1/projects/{project_ref}/postgrest" \
+  -H "Authorization: Bearer {supabase_access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{"db_schema":"public,graphql_public,api"}'
+
+# Or: Supabase dashboard → Settings → API → Exposed schemas → add "api"
+```
+
+Without this, every query returns `PGRST106: Invalid schema`.
+
+**2. Grant privileges to roles** — Supabase no longer auto-grants privileges to `anon`/`authenticated`/`service_role` on new tables (effective 2026-05-30 for new projects, 2026-10-30 for existing). Every migration must include explicit grants:
+
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON api.your_table TO authenticated;
+GRANT ALL ON api.your_table TO service_role;
+-- anon typically gets no access to app tables (requires auth)
+```
+
+Without this, authenticated users get `42501: permission denied for table`.
+
+The Supabase client must also declare the schema:
+```ts
+createClient(url, key, { db: { schema: 'api' } })
+```
 
 ## Unit / Component Tests
 
