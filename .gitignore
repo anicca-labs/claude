@@ -19,3 +19,9 @@ dist/
 
 # OS
 .DS_Store
+
+# Build artifacts
+*.ipa
+*.aab
+*.apk
+*.app

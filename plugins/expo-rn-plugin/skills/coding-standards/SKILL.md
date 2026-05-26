@@ -294,6 +294,349 @@ The Supabase client must also declare the schema:
 createClient(url, key, { db: { schema: 'api' } })
 ```
 
+## Push Notifications
+
+### Simulator-only guard for notification UI
+
+Features that require a physical device (FCM tokens, permission requests, local notification scheduling) should **not** be visually disabled on the simulator. Instead, keep the UI fully enabled and show a toast when tapped. This gives a realistic preview of the UI without misleading "Denied" states.
+
+```ts
+import * as Device from 'expo-device'
+
+const isSimulator = !Device.isDevice
+
+function showSimulatorToast() {
+  alert({ title: t`Physical device only`, message: t`This feature is not available on the simulator.`, preset: 'error', duration: 3 })
+}
+
+// In handlers:
+async function handleReminderToggle() {
+  if (isSimulator) { showSimulatorToast(); return }
+  // ... real logic
+}
+```
+
+In JSX, replace `disabled={!notifPermission}` with `disabled={isSimulator ? false : !notifPermission}` and the same pattern for `opacity` and `backgroundColor`. Skip "Enable notifications in Settings" hint copy on simulator (`{!isSimulator && !notifPermission && ...}`).
+
+The service layer (`requestNotificationPermission`, `getFCMToken`) already returns `false`/`null` for `!Device.isDevice` — no changes needed there.
+
+### Device token registration
+
+Register the FCM token whenever the auth state changes to signed-in. Fire-and-forget — do not `await` in the auth listener:
+
+```ts
+// in useAuthSession — onAuthStateChange handler
+if (s?.user) {
+  identifyRevenueCatUser(s.user.id)
+  upsertDeviceToken(s.user.id) // fire and forget
+}
+```
+
+### `device_tokens` table schema
+
+One row per user — `unique(user_id)`. If the user reinstalls the app they get a new FCM token; upserting on `user_id` updates the row in place rather than accumulating stale tokens.
+
+```sql
+create table api.device_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  fcm_token text not null,
+  reminder_hour int,        -- local time (null = no reminder)
+  reminder_minute int,
+  timezone text,            -- IANA string e.g. "America/New_York"
+  updated_at timestamptz not null default now(),
+  unique (user_id)
+);
+alter table api.device_tokens enable row level security;
+grant select, insert, update, delete on api.device_tokens to authenticated;
+grant select, insert, update, delete on api.device_tokens to service_role;
+create policy "Users can manage their own device tokens"
+  on api.device_tokens for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+```
+
+### Re-enabling notifications after denial
+
+When a user denies permission then later re-enables it from iOS/Android Settings, the app won't re-request the permission dialog — the OS only shows it once. The app must detect the return from Settings and register the FCM token at that point, otherwise the token never reaches Supabase until the user signs out and back in.
+
+Pattern: use an `AppState` listener with a `openedSettings` ref, and call `upsertDeviceToken` when permission is newly granted on return:
+
+```ts
+const openedSettings = useRef(false)
+
+async function checkPermission() {
+  const granted = await requestNotificationPermission()
+  setNotifPermission(granted)
+  if (granted) {
+    const token = await getFCMToken()
+    setFcmToken(token)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) upsertDeviceToken(user.id) // register token immediately
+  }
+}
+
+useEffect(() => {
+  checkPermission()
+  const sub = AppState.addEventListener('change', (state) => {
+    if (state === 'active' && openedSettings.current) {
+      openedSettings.current = false
+      checkPermission() // re-check + upsert if newly granted
+    }
+  })
+  return () => sub.remove()
+}, [])
+
+async function handlePermissionPress() {
+  if (notifPermission) return
+  openedSettings.current = true
+  await Linking.openSettings()
+}
+```
+
+### Notification permissions do NOT belong in the backend
+
+The OS silently drops notifications to users who have denied permission — the backend never needs to know. Store only `fcm_token`, `reminder_hour`, `reminder_minute`, and `timezone`. When the user disables a reminder in-app, set those three fields to `null`; the edge function skips rows with no reminder set.
+
+### Syncing reminder preferences
+
+Always include `timezone` (IANA string) when syncing reminder time so the server can fire at the correct local time regardless of UTC offset. Use `Intl.DateTimeFormat().resolvedOptions().timeZone` on the device:
+
+```ts
+const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+await supabase.from('device_tokens').upsert(
+  { user_id, fcm_token, reminder_hour: enabled ? hour : null,
+    reminder_minute: enabled ? minute : null,
+    timezone: enabled ? timezone : null, updated_at: new Date().toISOString() },
+  { onConflict: 'user_id' },
+)
+```
+
+## Supabase Edge Functions
+
+### tsconfig exclusion
+
+Edge functions are Deno — exclude them from the React Native tsconfig or `tsc` will fail on `Deno` globals and `https://esm.sh/` imports:
+
+```json
+"exclude": ["node_modules", "supabase/functions"]
+```
+
+### Excluding internal functions from the OpenAPI spec
+
+The `@ksairi-org/react-query-sdk` spec generator scans every subdirectory of `supabase/functions/` and generates OpenAPI 3.0 entries for each. When merged with the Supabase REST spec (Swagger 2.0), the version mismatch causes orval validation to fail.
+
+Functions that are server-side only (cron jobs, webhooks, internal triggers — not callable by the app) must be marked so the generator skips them:
+
+```ts
+// @openapi-internal — cron-triggered, not callable by the app client
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+```
+
+The generator (patched in node_modules) skips any `index.ts` containing `// @openapi-internal`. Apply this marker to every edge function that is not a client-facing endpoint.
+
+### Deploying without Docker
+
+`supabase functions deploy` requires Docker only for local serving. Deploying to the hosted project works without it:
+
+```bash
+supabase login --token $SUPABASE_ACCESS_TOKEN
+supabase link --project-ref <ref>
+supabase functions deploy send-reminders --project-ref <ref>
+```
+
+### pg_cron for scheduled push
+
+Set up via SQL in the Supabase dashboard (requires `pg_cron` and `pg_net` extensions, both enabled by default):
+
+```sql
+select cron.schedule(
+  'send-reminders',
+  '* * * * *',
+  $$select net.http_post(
+    url := 'https://<ref>.supabase.co/functions/v1/send-reminders',
+    headers := '{"Authorization": "Bearer <service_role_key>"}'::jsonb
+  ) as request_id;$$
+);
+```
+
+### Firebase service account key
+
+The FCM v1 API requires a **service account private key** to send push notifications programmatically. This is different from what the Firebase Console UI uses — the console authenticates you as a human via Google login, but a backend function needs its own credential to call the FCM HTTP API on your behalf.
+
+To obtain it: Firebase Console → Project Settings → Service Accounts → Generate new private key. This downloads a JSON file containing `client_email` and `private_key`.
+
+Store those two values as Supabase secrets (`FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`) and delete the JSON from your filesystem immediately. **Do not revoke the key** once it is in Supabase secrets — the edge function depends on it. If you suspect it is compromised, rotate it: generate a new key, update the Supabase secrets, then revoke the old one.
+
+One service account JSON covers all Supabase environments (stg, prd) that point to the same Firebase project.
+
+### FCM v1 auth from Deno
+
+Use `jose` to sign the JWT assertion and exchange for an OAuth2 access token. Store `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` as Supabase secrets:
+
+```ts
+import * as jose from 'https://esm.sh/jose@5'
+
+const privateKey = await jose.importPKCS8(FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'), 'RS256')
+const jwt = await new jose.SignJWT({ scope: 'https://www.googleapis.com/auth/firebase.messaging' })
+  .setProtectedHeader({ alg: 'RS256' })
+  .setIssuedAt().setExpirationTime(Math.floor(Date.now() / 1000) + 3600)
+  .setIssuer(FIREBASE_CLIENT_EMAIL)
+  .setAudience('https://oauth2.googleapis.com/token')
+  .sign(privateKey)
+
+const { access_token } = await fetch('https://oauth2.googleapis.com/token', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt }),
+}).then(r => r.json())
+```
+
+Then POST to `https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send` with `Authorization: Bearer <access_token>`.
+
+### Timezone-aware reminder matching in edge functions
+
+Use `Intl.DateTimeFormat` to convert UTC now to the user's local time — do not store UTC offsets (they break across DST transitions):
+
+```ts
+function matchesReminderTime(now: Date, timezone: string, hour: number, minute: number): boolean {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: 'numeric', minute: 'numeric', hour12: false })
+    .formatToParts(now)
+  const localHour = parseInt(parts.find(p => p.type === 'hour')!.value)
+  const localMinute = parseInt(parts.find(p => p.type === 'minute')!.value)
+  return localHour === hour && localMinute === minute
+}
+```
+
+## Streaks
+
+Anchor the streak count to **yesterday** if today has no entry yet, so users see their active streak before writing each day — not 0:
+
+```ts
+const cursor = new Date()
+if (!daysWithEntry.has(dayKey(cursor))) {
+  cursor.setDate(cursor.getDate() - 1) // still within today's window
+}
+while (daysWithEntry.has(dayKey(cursor))) {
+  streak++
+  cursor.setDate(cursor.getDate() - 1)
+}
+```
+
+Only reset to 0 if neither today nor yesterday has an entry.
+
+## Daily rotating content
+
+For prompts, tips, or any content that should change daily but stay stable throughout the day:
+
+```ts
+export function getDailyPromptIndex(promptCount: number): number {
+  return Math.floor(Date.now() / 86400000) % promptCount
+}
+```
+
+Place the translatable prompt strings in the screen file (not in the hook) so Lingui's extractor picks them up for the correct catalog.
+
+## Dev-only tools (`__DEV__`)
+
+`__DEV__` is `true` only when Metro bundler is running (dev client / `yarn start`). It is `false` in all EAS builds — including staging and production. Use it to gate developer-only UI that should never ship to users:
+
+```tsx
+{__DEV__ && fcmToken ? (
+  <SizingAnimatedButton onPress={handleFcmTest} ...>
+    <LabelLg>Send real FCM push (dev)</LabelLg>
+  </SizingAnimatedButton>
+) : null}
+```
+
+Typical uses: FCM pipeline test buttons, RC customer ID display, internal debug panels. Never use `__DEV__` to gate features that should exist in staging but not production — use `EXPO_PUBLIC_ENV` for that.
+
+### Dev-only edge functions
+
+For dev-only backend tools (e.g. `send-test-push`), still deploy to all environments (stg + prd). The app only calls them from `__DEV__` builds, so they're harmless in production but don't need special environment checks.
+
+Mark them `// @openapi-internal` so they're excluded from the generated spec.
+
+## i18n — dev-only strings
+
+Do **not** wrap dev-only strings in `t\`\`` or `<Trans>` — Lingui will extract them and warn about missing translations in every language. Use a plain string literal instead:
+
+```ts
+// ✅ plain string — Lingui ignores it, no translations needed
+'Not available on simulator'
+
+// ❌ extracted by Lingui — requires translations in all 5 languages
+t`Not available on simulator`
+```
+
+The exception is strings that appear in `__DEV__` blocks but are also shown to real users in some flows — those still need `t\`\``.
+
+For truly unavoidable cases where a dev string ends up extracted (e.g. inside a shared component), copy the English value as-is into all non-English `.po` files to silence the warning.
+
+## Build scripts — naming convention
+
+| Script | Platform | Profile | Target |
+|---|---|---|---|
+| `dev-client-ios` | iOS | `development` | Simulator |
+| `dev-client-android` | Android | `development` | Emulator |
+| `dev-client-ios-device` | iOS | `preview` | Physical device |
+| `dev-client-android-device` | Android | `preview` | Physical device |
+| `dev-client-ios:prd` / `dev-client-android:prd` etc. | — | — | Same, prd env |
+
+- `development` profile → local EAS build, dev client, connects to Metro
+- `preview` profile → standalone build installable on a device, no Metro dependency
+
+## `@ksairi-org` library publishing
+
+`@ksairi-org/*` packages live in the `ksairi-libs` monorepo. CI publishes automatically on push to `main` — never publish manually unless the CI workflow is broken.
+
+**Workflow for fixing a library bug:**
+1. Patch `node_modules` locally to validate the fix in the consuming app
+2. Apply the same fix to the library source in `ksairi-libs`
+3. Bump the version in `package.json`
+4. Push to `main` — CI publishes and the fix is live
+
+Do **not** use `yarn patch` (Yarn Berry's patch mechanism) for `@ksairi-org/*` packages — that's for third-party libraries you don't control. Fix the source instead.
+
+**npm auth token** — store in `~/.yarnrc.yml` (global, never committed):
+```yaml
+npmScopes:
+  "@ksairi-org":
+    npmRegistryServer: "https://registry.npmjs.org"
+    npmAuthToken: npm_xxx
+```
+Also add to `~/.npmrc` for plain `npm publish` fallback:
+```
+//registry.npmjs.org/:_authToken=npm_xxx
+```
+Never put the token in the repo's `.yarnrc.yml`.
+
+## .gitignore
+
+Always include these entries for Expo/EAS projects:
+
+```gitignore
+# EAS local build artifacts
+*.ipa
+*.aab
+*.apk
+*.app
+build-*.tar.gz
+
+# Native credential files
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Firebase service account keys (admin privileges — never commit)
+*firebase-adminsdk*.json
+# Google Play service account key
+eas-service-account.json
+```
+
+Build artifacts (`.ipa`, `.aab`, `.apk`) are produced by `eas build --local` and can be several hundred MB. They must never be committed.
+
 ## Unit / Component Tests
 
 - Test runner: `jest-expo`; render helper: `@testing-library/react-native`
