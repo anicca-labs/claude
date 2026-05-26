@@ -96,6 +96,29 @@ import { Containers } from '@ksairi-org/ui-containers'
 - Always commit `src/i18n/locales/compiled/*.ts` after running `yarn i18n` — the `pre-build` script reruns compilation; if the committed file differs from what the installed lingui version emits (e.g. lingui 6 adds `/*eslint-disable*/`), every build will produce a dirty tree
 - After upgrading `@lingui/cli`, run `yarn i18n:compile` and commit the result before the next build
 
+### Adding a new locale
+
+Four files to touch — missing any one of them silently falls back to English:
+
+1. `src/i18n/config/constants.ts` — add `{ code: 'Display name' }` entry to `locales`
+2. `src/i18n/locales/exported/<code>/screens.po` — create the PO file with translations (copy structure from an existing locale)
+3. `src/i18n/locales/compiled/<code>.ts` — create the compiled catalog (same hashed message-ID keys as every other locale; copy from an existing compiled file and replace the translation strings)
+4. `src/i18n/utils.ts` — import the compiled messages and add to `messagesByLocale`
+
+### RTL languages (Arabic, Hebrew, …)
+
+When locale is detected from the **device language** at startup (the standard pattern using `expo-localization`), RTL is free: React Native reads `I18nManager.isRTL` from the OS before the first render and mirrors all flex layouts automatically. You do not need to call `I18nManager.forceRTL`.
+
+`forceRTL` is only needed when the app has an **in-app language switcher** that can flip direction mid-session. In that case, the call must be followed by a full app restart (`RNRestart` or `Updates.reloadAsync`) because `isRTL` is read once at process start.
+
+Before enabling an RTL locale, audit layouts for direction-unsafe styles:
+
+```bash
+grep -r "left:\|right:\|paddingLeft\|paddingRight\|marginLeft\|marginRight\|textAlign.*left\|textAlign.*right" src/screens --include="*.tsx"
+```
+
+`hitSlop` left/right are safe (touch area, not layout). Anything else must be replaced with `start`/`end` equivalents or removed.
+
 ## General
 
 - No over-engineering; no magic numbers — extract to named constants
