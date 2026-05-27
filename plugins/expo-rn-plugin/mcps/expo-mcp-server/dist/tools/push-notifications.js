@@ -121,6 +121,7 @@ function unsupportedInspectResult(tableName, backend) {
     };
 }
 async function inspectPushTokens(options) {
+    (0, db_client_js_1.loadProjectEnv)(options.projectRoot);
     const config = await (0, load_config_js_1.loadConfig)(options.projectRoot);
     const backend = config.backend;
     const tableName = options.tableName ??

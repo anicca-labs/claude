@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { createSign } from "crypto";
-import { runSql } from "../db-client.js";
+import { runSql, loadProjectEnv } from "../db-client.js";
 import { loadConfig } from "./load-config.js";
 import type { BackendKind } from "./load-config.js";
 
@@ -192,6 +192,7 @@ function unsupportedInspectResult(
 export async function inspectPushTokens(
   options: InspectPushTokensOptions,
 ): Promise<InspectPushTokensResult> {
+  loadProjectEnv(options.projectRoot);
   const config = await loadConfig(options.projectRoot);
   const backend = config.backend;
   const tableName =
