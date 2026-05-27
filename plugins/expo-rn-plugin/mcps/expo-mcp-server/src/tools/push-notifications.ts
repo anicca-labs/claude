@@ -155,16 +155,17 @@ async function inspectDatabaseTokens(
     `);
     for (const row of countRows) {
       const platform = typeof row.platform === "string" ? row.platform : "unknown";
-      const count = typeof row.count === "string" ? parseInt(row.count, 10) : 0;
+      const count = typeof row.count === "string" ? parseInt(row.count, 10) : typeof row.count === "number" ? row.count : 0;
       byPlatform[platform] = count;
       total += count;
     }
   } else {
     const countRows = await runSql(`SELECT COUNT(*) as count FROM api.${tableName}`);
-    total = typeof countRows[0]?.count === "string" ? parseInt(countRows[0].count, 10) : 0;
+    const raw = countRows[0]?.count;
+    total = typeof raw === "string" ? parseInt(raw, 10) : typeof raw === "number" ? raw : 0;
   }
 
-  const selectCols = ["id", "user_id", hasPlatform ? "platform" : "null::text as platform", tokenCol ?? "null::text as token", timestampCol ? `${timestampCol} as created_at` : "null::text as created_at"].join(", ");
+  const selectCols = ["id", "user_id", hasPlatform ? "platform" : "null::text as platform", tokenCol ? `${tokenCol} as token` : "null::text as token", timestampCol ? `${timestampCol} as created_at` : "null::text as created_at"].join(", ");
   const recentRows = await runSql(`
     SELECT ${selectCols}
     FROM api.${tableName}
