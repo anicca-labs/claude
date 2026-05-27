@@ -306,7 +306,7 @@ import * as Device from 'expo-device'
 const isSimulator = !Device.isDevice
 
 function showSimulatorToast() {
-  alert({ title: t`Physical device only`, message: t`This feature is not available on the simulator.`, preset: 'error', duration: 3 })
+  alert({ title: 'Physical device only', message: 'This feature is not available on the simulator.', preset: 'error', duration: 3 })
 }
 
 // In handlers:
@@ -355,42 +355,83 @@ create policy "Users can manage their own device tokens"
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 ```
 
+### Permission status vs permission request
+
+**Never call `requestPermissionsAsync()` (or `requestNotificationPermission()`) on screen mount.** Tab screens are pre-mounted by the tab navigator — a `useEffect` on the settings tab fires at app startup, which would show the OS permission dialog before the user has even opened settings. That is too aggressive.
+
+Instead, keep two separate functions:
+- `getNotificationPermissionStatus()` — read-only, never shows a dialog
+- `requestNotificationPermission()` — shows the OS dialog (call only on explicit user action)
+
+```ts
+export type NotificationPermissionStatus = 'undetermined' | 'granted' | 'denied'
+
+export async function getNotificationPermissionStatus(): Promise<NotificationPermissionStatus> {
+  if (!Device.isDevice) return 'denied'
+  const { status } = await ExpoNotifications.getPermissionsAsync()
+  if (status === 'granted') return 'granted'
+  if (status === 'undetermined') return 'undetermined'
+  return 'denied'
+}
+```
+
+In the settings screen, track `NotificationPermissionStatus | null` (null = loading):
+
+```ts
+const [notifPermission, setNotifPermission] = useState<NotificationPermissionStatus | null>(null)
+
+async function refreshPermissionStatus() {
+  if (isSimulator) return
+  const status = await getNotificationPermissionStatus()
+  setNotifPermission(status)
+  if (status === 'granted') {
+    const token = await getFCMToken()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) upsertDeviceToken(user.id)
+  }
+}
+```
+
+The permission row tap handler covers all three states:
+
+```ts
+async function handlePermissionPress() {
+  if (notifPermission === 'granted') return
+  if (notifPermission === 'undetermined') {
+    // First time — show in-app OS dialog
+    const granted = await requestNotificationPermission()
+    setNotifPermission(granted ? 'granted' : 'denied')
+    if (granted) { /* fetch token + upsert */ }
+    return
+  }
+  // Denied — must go to Settings
+  openedSettings.current = true
+  await Linking.openSettings()
+}
+```
+
+Show label and color per state:
+- `'undetermined'` → accent color, label "Enable"
+- `'granted'` → green, label "Granted"
+- `'denied'` → red, label "Denied — tap to open Settings"
+
 ### Re-enabling notifications after denial
 
-When a user denies permission then later re-enables it from iOS/Android Settings, the app won't re-request the permission dialog — the OS only shows it once. The app must detect the return from Settings and register the FCM token at that point, otherwise the token never reaches Supabase until the user signs out and back in.
-
-Pattern: use an `AppState` listener with a `openedSettings` ref, and call `upsertDeviceToken` when permission is newly granted on return:
+When a user denies permission then later re-enables it from iOS/Android Settings, the app must detect the return and register the FCM token immediately. Pattern: `AppState` listener + `openedSettings` ref:
 
 ```ts
 const openedSettings = useRef(false)
 
-async function checkPermission() {
-  const granted = await requestNotificationPermission()
-  setNotifPermission(granted)
-  if (granted) {
-    const token = await getFCMToken()
-    setFcmToken(token)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) upsertDeviceToken(user.id) // register token immediately
-  }
-}
-
 useEffect(() => {
-  checkPermission()
+  refreshPermissionStatus()
   const sub = AppState.addEventListener('change', (state) => {
     if (state === 'active' && openedSettings.current) {
       openedSettings.current = false
-      checkPermission() // re-check + upsert if newly granted
+      refreshPermissionStatus() // re-check + upsert if newly granted
     }
   })
   return () => sub.remove()
 }, [])
-
-async function handlePermissionPress() {
-  if (notifPermission) return
-  openedSettings.current = true
-  await Linking.openSettings()
-}
 ```
 
 ### Notification permissions do NOT belong in the backend
