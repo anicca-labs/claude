@@ -221,7 +221,11 @@ async function sendTestPush(options) {
     });
     const json = (await res.json());
     if (!res.ok) {
-        const errorMessage = "error" in json ? json.error.message : `FCM HTTP ${res.status}`;
+        const fcmError = "error" in json ? json.error : null;
+        const isApnsError = fcmError?.details?.some((d) => d.errorCode === "THIRD_PARTY_AUTH_ERROR");
+        const errorMessage = isApnsError
+            ? "FCM THIRD_PARTY_AUTH_ERROR: APNs credentials not configured. Go to Firebase Console → Project Settings → Cloud Messaging → Apple app configuration and upload your APNs Auth Key (.p8)."
+            : (fcmError?.message ?? `FCM HTTP ${res.status}`);
         return {
             success: false,
             messageId: null,

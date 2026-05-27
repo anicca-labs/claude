@@ -251,6 +251,34 @@ The component lives at `src/components/atoms/EnvBadge/index.tsx` and is exported
 - Destructive / irreversible actions → confirmation `Alert.alert` dialog, not a toast
 - Form validation errors → inline under the field, not a toast
 
+### Foreground push notification UI
+
+When a push arrives while the app is open, show a top banner with a bell icon — not `Burnt.alert` (centered modal with heart). The `notification` helper in `useToast` encapsulates this:
+
+```ts
+// useToast.ts
+function notification({ title, message, duration = 4 }) {
+  Burnt.toast({
+    title, message, preset: 'custom',
+    icon: { ios: { name: 'bell.fill', color: '#007AFF' } },
+    duration, from: 'top',
+  })
+}
+```
+
+Wire it up in the root layout:
+
+```ts
+const { notification } = useToast()
+useEffect(() => {
+  return subscribeToForegroundMessages((title, body) => {
+    notification({ title, message: body })
+  })
+}, [])
+```
+
+`Burnt.alert` with `preset: 'heart'` is for app-initiated alerts (achievements, confirmations). The top-banner `notification` pattern matches what users expect from a real push notification landing while they're in the app.
+
 ## Dates
 
 - Format dates with `date-fns` — always pass the locale from `expo-localization` for locale-aware output
@@ -541,6 +569,36 @@ const { access_token } = await fetch('https://oauth2.googleapis.com/token', {
 ```
 
 Then POST to `https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send` with `Authorization: Bearer <access_token>`.
+
+### JWT grant type — `oauth` not `oauth2`
+
+The correct grant type for a service account JWT assertion is `urn:ietf:params:oauth:grant-type:jwt-bearer`. Using `oauth2` (with the `2`) causes Google's token endpoint to return `unsupported_grant_type`. This applies to both Deno (`URLSearchParams`) and Node (`fetch`).
+
+### APNs credentials required for iOS delivery
+
+Even with a valid service account and OAuth token, FCM returns **401 UNAUTHENTICATED / THIRD_PARTY_AUTH_ERROR** if the APNs Auth Key is not configured. This has nothing to do with your service account — it means Firebase can't forward the notification to Apple.
+
+Fix: Firebase Console → Project Settings → Cloud Messaging → **Apple app configuration** → upload your `.p8` APNs Auth Key (from Apple Developer → Keys). One key works for both development and production.
+
+`THIRD_PARTY_AUTH_ERROR` in the FCM response `details` array is the diagnostic signal — the generic 401 message says nothing useful.
+
+### `send_test_push` MCP tool — prerequisites checklist
+
+Before calling `send_test_push`:
+
+1. `firebase-service-account.json` exists in the project root (path set in `mcp.config.json` → `firebase.serviceAccountPath`)
+2. `firebase-service-account.json` is in `.gitignore` — the default pattern `*firebase-adminsdk*.json` does **not** match a file named `firebase-service-account.json`; add an explicit entry
+3. APNs Auth Key is uploaded in Firebase Console (see above)
+
+### `inspect_push_tokens` MCP tool — schema flexibility
+
+The tool introspects `information_schema.columns` before querying so it handles non-standard schemas:
+
+- Token column: `token` or `fcm_token`
+- Timestamp column: `created_at` or `updated_at`
+- `platform` column may be absent (omitted from SELECT if missing)
+
+If you extend the `device_tokens` table, no changes to the tool are needed as long as `id`, `user_id`, and at least one of the token column names above are present.
 
 ### Timezone-aware reminder matching in edge functions
 

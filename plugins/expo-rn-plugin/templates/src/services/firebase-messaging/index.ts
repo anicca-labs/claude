@@ -10,7 +10,6 @@ import * as ExpoNotifications from 'expo-notifications'
 
 ExpoNotifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true,
