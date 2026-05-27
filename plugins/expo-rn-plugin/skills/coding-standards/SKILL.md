@@ -578,12 +578,34 @@ For truly unavoidable cases where a dev string ends up extracted (e.g. inside a 
 |---|---|---|---|
 | `dev-client-ios` | iOS | `development` | Simulator |
 | `dev-client-android` | Android | `development` | Emulator |
-| `dev-client-ios-device` | iOS | `preview` | Physical device |
-| `dev-client-android-device` | Android | `preview` | Physical device |
+| `dev-client-ios-device` | iOS | `development-device` | Physical device |
+| `dev-client-android-device` | Android | `development-device` | Physical device |
 | `dev-client-ios:prd` / `dev-client-android:prd` etc. | — | — | Same, prd env |
 
-- `development` profile → local EAS build, dev client, connects to Metro
-- `preview` profile → standalone build installable on a device, no Metro dependency
+**Required `eas.json` profiles:**
+
+```json
+"development": {
+  "developmentClient": true,
+  "distribution": "internal",
+  "ios": { "simulator": true }
+},
+"development-device": {
+  "developmentClient": true,
+  "distribution": "internal",
+  "ios": { "simulator": false }
+},
+"preview": {
+  "distribution": "internal",
+  "ios": { "simulator": false }
+}
+```
+
+- `development` / `development-device` → `developmentClient: true`, shows Expo dev launcher, connects to Metro over Wi-Fi or USB
+- `preview` → standalone build, JS bundled at build time, no Metro — use for distribution testing (TestFlight-like), **not** for iterative development on device
+- **Do not use `preview` for device dev clients** — the app will open once (from the embedded bundle) but has no Metro fallback and will crash on subsequent opens if the bundle has any issue
+
+For Android, the `ios.simulator` flag is ignored — `development` would work for physical Android devices too, but use `development-device` for consistency.
 
 ## `@ksairi-org` library publishing
 
