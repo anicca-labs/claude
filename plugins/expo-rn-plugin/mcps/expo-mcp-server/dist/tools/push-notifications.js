@@ -76,21 +76,36 @@ async function inspectDatabaseTokens(tableName, limit) {
             suggestedMigration: generateMigration(tableName),
         };
     }
-    const countRows = await (0, db_client_js_1.runSql)(`
-    SELECT platform, COUNT(*) as count
-    FROM api.${tableName}
-    GROUP BY platform
+    // Introspect actual columns so we handle schema variations
+    const colRows = await (0, db_client_js_1.runSql)(`
+    SELECT column_name FROM information_schema.columns
+    WHERE table_schema = 'api' AND table_name = '${tableName}'
   `);
-    const byPlatform = {};
+    const cols = new Set(colRows.map((r) => String(r.column_name)));
+    const tokenCol = cols.has("token") ? "token" : cols.has("fcm_token") ? "fcm_token" : null;
+    const hasPlatform = cols.has("platform");
     let total = 0;
-    for (const row of countRows) {
-        const platform = typeof row.platform === "string" ? row.platform : "unknown";
-        const count = typeof row.count === "string" ? parseInt(row.count, 10) : 0;
-        byPlatform[platform] = count;
-        total += count;
+    const byPlatform = {};
+    if (hasPlatform) {
+        const countRows = await (0, db_client_js_1.runSql)(`
+      SELECT platform, COUNT(*) as count
+      FROM api.${tableName}
+      GROUP BY platform
+    `);
+        for (const row of countRows) {
+            const platform = typeof row.platform === "string" ? row.platform : "unknown";
+            const count = typeof row.count === "string" ? parseInt(row.count, 10) : 0;
+            byPlatform[platform] = count;
+            total += count;
+        }
     }
+    else {
+        const countRows = await (0, db_client_js_1.runSql)(`SELECT COUNT(*) as count FROM api.${tableName}`);
+        total = typeof countRows[0]?.count === "string" ? parseInt(countRows[0].count, 10) : 0;
+    }
+    const selectCols = ["id", "user_id", hasPlatform ? "platform" : "null::text as platform", tokenCol ?? "null::text as token", "created_at"].join(", ");
     const recentRows = await (0, db_client_js_1.runSql)(`
-    SELECT id, user_id, platform, token, created_at
+    SELECT ${selectCols}
     FROM api.${tableName}
     ORDER BY created_at DESC
     LIMIT ${limit}
@@ -98,7 +113,7 @@ async function inspectDatabaseTokens(tableName, limit) {
     const recentTokens = recentRows.map((row) => ({
         id: typeof row.id === "string" ? row.id : "",
         user_id: typeof row.user_id === "string" ? row.user_id : "",
-        platform: typeof row.platform === "string" ? row.platform : "",
+        platform: typeof row.platform === "string" ? row.platform : "—",
         token_preview: typeof row.token === "string" ? maskToken(row.token) : "(invalid)",
         created_at: typeof row.created_at === "string" ? row.created_at : "",
     }));
