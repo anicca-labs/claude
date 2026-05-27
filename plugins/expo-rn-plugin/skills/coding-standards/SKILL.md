@@ -105,6 +105,14 @@ Four files to touch — missing any one of them silently falls back to English:
 3. `src/i18n/locales/compiled/<code>.ts` — create the compiled catalog (same hashed message-ID keys as every other locale; copy from an existing compiled file and replace the translation strings)
 4. `src/i18n/utils.ts` — import the compiled messages and add to `messagesByLocale`
 
+### iOS second-launch crash (`-[NSTaggedPointerString count]`)
+
+`Settings.set({ AppleLanguages: locale })` writes a bare string to NSUserDefaults. On the next launch, UIKit's `_CFLocaleCreateLocaleIdentifierForAvailableLocalizations` reads `AppleLanguages` expecting an NSArray and calls `count` on the string — crashing at ~100ms before any JS initializes. The stack points entirely at system frameworks, making the culprit invisible without reading the crash JSON.
+
+**Fix:** always wrap in an array — `Settings.set({ AppleLanguages: [locale] })`.
+
+The crash only manifests on the _second_ launch because the bad value is written on the first. Clearing it requires deleting the app (wipes NSUserDefaults), then reinstalling.
+
 ### RTL languages (Arabic, Hebrew, …)
 
 When locale is detected from the **device language** at startup (the standard pattern using `expo-localization`), RTL is free: React Native reads `I18nManager.isRTL` from the OS before the first render and mirrors all flex layouts automatically. You do not need to call `I18nManager.forceRTL`.

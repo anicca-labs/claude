@@ -16,7 +16,7 @@ const LinguiClientProvider = ({ children }: LinguiClientProviderProps) => {
   useEffect(() => {
     const newLocale = getLocales()[0]?.languageCode ?? 'en'
     if (Platform.OS === 'ios') {
-      Settings.set({ AppleLanguages: newLocale })
+      Settings.set({ AppleLanguages: [newLocale] })
     }
     setI18nLocale(newLocale)
     setIsI18nReady(true)
