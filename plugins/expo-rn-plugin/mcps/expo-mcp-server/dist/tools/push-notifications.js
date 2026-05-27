@@ -12,7 +12,7 @@ const load_config_js_1 = require("./load-config.js");
 // ─── JWT / OAuth2 helpers ──────────────────────────────────────────────────────
 const FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
 const TOKEN_URI = "https://oauth2.googleapis.com/token";
-const JWT_GRANT_TYPE = "urn:ietf:params:oauth2:grant-type:jwt-bearer";
+const JWT_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
 function toBase64url(input) {
     return Buffer.from(input)
         .toString("base64")
@@ -37,7 +37,7 @@ async function getAccessToken(sa) {
     const res = await fetch(TOKEN_URI, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ grant_type: JWT_GRANT_TYPE, assertion: jwt }),
+        body: new URLSearchParams({ assertion: jwt, grant_type: JWT_GRANT_TYPE }),
     });
     if (!res.ok) {
         const err = await res.text();
