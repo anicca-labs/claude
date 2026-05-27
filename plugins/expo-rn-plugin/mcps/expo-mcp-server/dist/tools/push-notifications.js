@@ -84,6 +84,7 @@ async function inspectDatabaseTokens(tableName, limit) {
     const cols = new Set(colRows.map((r) => String(r.column_name)));
     const tokenCol = cols.has("token") ? "token" : cols.has("fcm_token") ? "fcm_token" : null;
     const hasPlatform = cols.has("platform");
+    const timestampCol = cols.has("created_at") ? "created_at" : cols.has("updated_at") ? "updated_at" : null;
     let total = 0;
     const byPlatform = {};
     if (hasPlatform) {
@@ -103,11 +104,11 @@ async function inspectDatabaseTokens(tableName, limit) {
         const countRows = await (0, db_client_js_1.runSql)(`SELECT COUNT(*) as count FROM api.${tableName}`);
         total = typeof countRows[0]?.count === "string" ? parseInt(countRows[0].count, 10) : 0;
     }
-    const selectCols = ["id", "user_id", hasPlatform ? "platform" : "null::text as platform", tokenCol ?? "null::text as token", "created_at"].join(", ");
+    const selectCols = ["id", "user_id", hasPlatform ? "platform" : "null::text as platform", tokenCol ?? "null::text as token", timestampCol ? `${timestampCol} as created_at` : "null::text as created_at"].join(", ");
     const recentRows = await (0, db_client_js_1.runSql)(`
     SELECT ${selectCols}
     FROM api.${tableName}
-    ORDER BY created_at DESC
+    ${timestampCol ? `ORDER BY ${timestampCol} DESC` : ""}
     LIMIT ${limit}
   `);
     const recentTokens = recentRows.map((row) => ({
