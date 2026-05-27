@@ -89,6 +89,7 @@ copy_if_missing "$PLUGIN_ROOT/templates/jest.config.js"                       "$
 copy_if_missing "$PLUGIN_ROOT/templates/commitlint.config.js"                 "$APP_ROOT/commitlint.config.js"
 copy_if_missing "$PLUGIN_ROOT/templates/src/__mocks__/fileMock.js"            "$APP_ROOT/src/__mocks__/fileMock.js"
 copy_if_missing "$PLUGIN_ROOT/templates/.husky/common.sh"                     "$APP_ROOT/.husky/common.sh"
+copy_if_missing "$PLUGIN_ROOT/templates/.husky/pre-commit"                    "$APP_ROOT/.husky/pre-commit"
 copy_if_missing "$PLUGIN_ROOT/templates/.husky/pre-push"                      "$APP_ROOT/.husky/pre-push"
 copy_if_missing "$PLUGIN_ROOT/templates/.husky/commit-msg"                    "$APP_ROOT/.husky/commit-msg"
 copy_if_missing "$PLUGIN_ROOT/templates/.editorconfig"                        "$APP_ROOT/.editorconfig"
@@ -670,7 +671,8 @@ echo "→ Initialising husky..."
 if [ ! -d "$APP_ROOT/.husky/_" ]; then
   yarn husky init
   # husky init creates a default pre-commit — replace with our hook set
-  rm -f "$APP_ROOT/.husky/pre-commit"
+  cp "$PLUGIN_ROOT/templates/.husky/pre-commit" "$APP_ROOT/.husky/pre-commit"
+  chmod +x "$APP_ROOT/.husky/pre-commit"
   echo "   Initialised"
 else
   echo "   Already initialised"
