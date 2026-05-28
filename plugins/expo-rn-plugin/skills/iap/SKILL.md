@@ -28,7 +28,7 @@ Doppler keys per environment:
 | --- | --- |
 | `EXPO_PUBLIC_RC_API_KEY` | iOS production key (`appl_…`) |
 | `EXPO_PUBLIC_RC_ANDROID_API_KEY` | Android production key (`goog_…`) |
-| `EXPO_PUBLIC_RC_TEST_API_KEY` | Test Store key (`test_…`) — stg only |
+| `EXPO_PUBLIC_RC_TEST_API_KEY` | Test Store key (`test_…`) — **required in stg AND prd Doppler configs** |
 | `RC_MCP_API_KEY` | Secret key for RC API/MCP calls (`sk_…`) |
 
 ## RC service — canonical pattern
@@ -203,9 +203,12 @@ curl -X POST "https://api.revenuecat.com/v2/projects/{project_id}/packages/{pack
 
 The `test_` key is platform-agnostic — same key works on iOS simulator and Android emulator.
 
-**Critical: products MUST be created through the RC dashboard UI** — API-created products lack the price fields the paywall needs to render. The v2 API can create the product record and wire entitlements/packages, but the simulated price must be set via the dashboard:
+**Critical: Test Store products MUST have prices set in the RC dashboard.** The v2 API can create the product record and wire entitlements/packages, but the simulated price must be set via the dashboard UI — the API doesn't expose a price endpoint for Test Store products:
 - Product Catalog → Products → select the test store product → Pricing → Add currency → USD → set price → Save
-- Without a price, RC reports "no Test Store products registered" even if the product is attached to packages
+- Without a price, `/rcbilling/v1/subscribers/.../products` returns `{"product_details":[]}` and the RC SDK throws "None of the products could be fetched from App Store Connect" even though the test key is used, `__DEV__=true`, and all API calls return 200. The error message is misleading — it's not an App Store Connect issue, it's missing prices.
+- Devices that already cached a successful offerings response (304 Not Modified) will continue working even after prices are removed, masking the issue for existing installs but breaking all fresh installs.
+
+**Critical: `EXPO_PUBLIC_RC_TEST_API_KEY` must be in BOTH stg and prd Doppler configs.** Dev client builds (`developmentClient: true` in eas.json) set `__DEV__=true` regardless of which Doppler config they use. Without the test key in the prd Doppler config, the `if (testKey && __DEV__)` branch is skipped and the build falls through to the `appl_` production key, which then fails because the products don't exist in App Store Connect sandbox.
 
 **Offerings must be published** (not draft) before the SDK will serve them. Changing from draft → published in the RC dashboard is required after any configuration change.
 
