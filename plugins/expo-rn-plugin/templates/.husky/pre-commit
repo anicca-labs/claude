@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 . "$(dirname "$0")/common.sh"
 
-# If any .po files are staged, recompile and re-stage the compiled catalogs
-if git diff --cached --name-only | grep -q '\.po$'; then
+# If any i18n file is staged, recompile and re-stage the compiled catalogs
+if git diff --cached --name-only | grep -q 'src/i18n/'; then
   yarn lingui compile
   git add src/i18n/locales/compiled/
 fi
