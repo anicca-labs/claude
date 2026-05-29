@@ -240,10 +240,11 @@ async function pushPlatform(platform, metadata, updateId) {
     if (!fs.existsSync(localPath)) { console.warn(`  warn: asset not found: ${localPath}`); continue }
     const contentType = extToContentType(asset.ext)
     await uploadFile(localPath, `${prefix}/${asset.path}`, contentType)
-    assets.push({ hash: sha256b64(localPath), key: asset.path, contentType, url: `${storageBase}/${prefix}/${asset.path}` })
+    // fileExtension is required by expo-updates — omitting it causes JSONException and the update silently fails
+    assets.push({ hash: sha256b64(localPath), key: asset.path, fileExtension: `.${asset.ext}`, contentType, url: `${storageBase}/${prefix}/${asset.path}` })
   }
 
-  await insertUpdate({ id: updateId, channel: CHANNEL, platform, runtime_version: RUNTIME_VERSION, launch_asset: { hash: sha256b64(bundleLocalPath), key: 'bundle', contentType: 'application/javascript', url: `${storageBase}/${prefix}/${platformMeta.bundle}` }, assets, extra: {}, active: true })
+  await insertUpdate({ id: updateId, channel: CHANNEL, platform, runtime_version: RUNTIME_VERSION, launch_asset: { hash: sha256b64(bundleLocalPath), key: 'bundle', fileExtension: path.extname(platformMeta.bundle) || '.bundle', contentType: 'application/javascript', url: `${storageBase}/${prefix}/${platformMeta.bundle}` }, assets, extra: {}, active: true })
   console.log(`  ✓ registered in DB`)
 }
 
