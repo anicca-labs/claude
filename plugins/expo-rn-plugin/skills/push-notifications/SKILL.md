@@ -18,10 +18,10 @@ Apply the following push notification standards to all code in this project.
   ```ts
   ["expo-notifications", {
     icon: "./assets/images/notification-icon.png",
-    color: "#ffffff",
     enableBackgroundRemoteNotifications: true,
   }]
   ```
+  Do not set `color` — `react-native-firebase_messaging` already injects `default_notification_color` into the Android manifest, and adding `color` here causes a manifest merger conflict.
   Create `assets/images/notification-icon.png` — white/transparent PNG (Android renders notification icons using alpha channel only; color is ignored). Keeping it separate from `adaptive-icon.png` lets you update it independently.
 - Add `"@firebase-messaging": ["src/services/firebase-messaging/index.ts"]` to `tsconfig.json` paths
 - Firebase project must have FCM enabled (Cloud Messaging tab in Firebase console)
