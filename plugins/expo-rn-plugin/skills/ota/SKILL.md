@@ -305,10 +305,27 @@ jobs:
 
 ```json
 {
+  "build-apk": "yarn pre-build && doppler run --project mobile --config ${ENV:-stg} -- eas build --platform android --profile preview-apk --local --output ./app-build.apk",
+  "build-apk:prd": "ENV=prd yarn build-apk",
   "push-ota": "doppler run --project mobile --config ${ENV:-stg} -- bash -c 'yarn expo export --output-dir dist && EXPO_UPDATE_CHANNEL=${ENV:-stg} EXPO_RUNTIME_VERSION=$(node -p \"require(\\\"./package.json\\\").version\") node scripts/push-ota-update.mjs'",
   "push-ota:prd": "ENV=prd yarn push-ota",
   "functions:deploy:stg": "... && supabase functions deploy expo-update-manifest --no-verify-jwt --project-ref <stg-ref>",
   "functions:deploy:prd": "... && supabase functions deploy expo-update-manifest --no-verify-jwt --project-ref <prd-ref>"
+}
+```
+
+Also add the `preview-apk` profile to `eas.json`:
+
+```json
+{
+  "build": {
+    "preview-apk": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
 }
 ```
 
