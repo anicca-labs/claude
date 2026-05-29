@@ -27,6 +27,11 @@ The store build is still required when native code changes. OTA handles JS-only 
 
 ## app.config.ts
 
+Do NOT set `kotlinVersion` in `expo-build-properties` android config. `expo-build-properties`
+writes it as `android.kotlinVersion` (prefixed), which `expo-updates`' buildscript reads as
+`rootProject["kotlinVersion"]` (no prefix) — they don't align, causing a KSP version mismatch
+and `NoSuchMethodError` at compile time. `ExpoRootProjectPlugin` already defaults to `2.0.21`.
+
 ```ts
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -43,9 +48,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     // ... other plugins
+    // No kotlinVersion in expo-build-properties android config — see note above
     'expo-updates',
   ],
-})
+});
 ```
 
 `EXPO_UPDATE_URL` and `EXPO_UPDATE_CHANNEL` are set per environment in Doppler.
@@ -337,3 +343,20 @@ yarn push-ota:prd    # prd
 ```
 
 Or just push to `stg`/`main` — the CI workflow fires automatically.
+
+## Testing OTA updates
+
+**Dev clients cannot test OTA** — they bypass `expo-updates` and connect to the local dev server instead.
+
+**iOS simulator builds cannot test OTA** — use a device build.
+
+You need a real binary with no dev server running:
+
+| Platform | Build command | Install |
+|----------|--------------|---------|
+| iOS | `yarn build-ipa` | Install `.ipa` via Xcode / Apple Configurator |
+| Android | `yarn build-apk` | `adb install app-build.apk` or drag onto emulator |
+
+Then open the app standalone (just tap the icon, no `yarn start`). On launch it checks for updates (`checkAutomatically: 'ON_LOAD'`). Push a JS change with `yarn push-ota`, kill and reopen — the update appears.
+
+Confirm in Supabase: `api.expo_updates` should have a new active row with correct `channel`, `platform`, and `runtime_version`.
