@@ -289,7 +289,7 @@ jobs:
           fi
           echo "channel=$ENV" >> "$GITHUB_OUTPUT"
       - name: Export JS bundle
-        run: doppler run --project mobile --config ${{ steps.env.outputs.channel }} -- yarn expo export --output-dir dist
+        run: doppler run --project mobile --config ${{ steps.env.outputs.channel }} -- yarn expo export --platform ios --platform android --output-dir dist
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
       - name: Push OTA update
@@ -307,7 +307,7 @@ jobs:
 {
   "build-apk": "yarn pre-build && doppler run --project mobile --config ${ENV:-stg} -- eas build --platform android --profile preview-apk --local --output ./app-build.apk",
   "build-apk:prd": "ENV=prd yarn build-apk",
-  "push-ota": "doppler run --project mobile --config ${ENV:-stg} -- bash -c 'yarn expo export --output-dir dist && EXPO_UPDATE_CHANNEL=${ENV:-stg} EXPO_RUNTIME_VERSION=$(node -p \"require(\\\"./package.json\\\").version\") node scripts/push-ota-update.mjs'",
+  "push-ota": "doppler run --project mobile --config ${ENV:-stg} -- bash -c 'yarn expo export --platform ios --platform android --output-dir dist && EXPO_UPDATE_CHANNEL=${ENV:-stg} EXPO_RUNTIME_VERSION=$(node -p \"require(\\\"./package.json\\\").version\") node scripts/push-ota-update.mjs'",
   "push-ota:prd": "ENV=prd yarn push-ota",
   "functions:deploy:stg": "... && supabase functions deploy expo-update-manifest --no-verify-jwt --project-ref <stg-ref>",
   "functions:deploy:prd": "... && supabase functions deploy expo-update-manifest --no-verify-jwt --project-ref <prd-ref>"
