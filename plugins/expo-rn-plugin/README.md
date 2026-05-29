@@ -117,7 +117,11 @@ Set both `REVENUECAT_API_KEY` (iOS `appl_…`) and `REVENUECAT_ANDROID_API_KEY` 
 | --- | --- |
 | `yarn dev-client-ios` / `yarn dev-client-android` | Build a dev client for stg (simulator / device) |
 | `yarn dev-client-ios:prd` / `yarn dev-client-android:prd` | Build a dev client for prd (real purchases, real auth) |
-| `yarn build-apk` / `yarn build-apk:prd` | Build a bundled APK for Android emulator/device — use this instead of the dev client when testing anything affected by Metro latency (splash screen, startup time, asset loading). iOS dev-client-ios already bundles JS via Xcode so no equivalent needed. |
+| `yarn dev-client-ios-device` / `yarn dev-client-android-device` | Build a dev client for a physical device (stg) |
+| `yarn build-sim` / `yarn build-sim:prd` | Build a bundled iOS app for simulator — use when testing without a dev server (splash, startup, OTA excluded — sim can't test OTA) |
+| `yarn build-ipa` / `yarn build-ipa:prd` | Build a bundled IPA for iOS device — required for OTA testing |
+| `yarn build-apk` / `yarn build-apk:prd` | Build a bundled APK for Android emulator/device — required for OTA testing (no simulator distinction on Android) |
+| `yarn push-ota` / `yarn push-ota:prd` | Export JS bundle and push as an OTA update — requires `build-ipa` or `build-apk` binary installed, no dev server running |
 | `yarn build-store-ios:prd` / `yarn build-store-android:prd` | Build a production IPA / AAB without submitting |
 | `yarn deploy-store-all:prd-internal` | **Recommended release flow** — build prd + submit to TestFlight / Play internal testing for final verification with real purchases |
 | `yarn deploy-store-all:prd` | Submit directly to App Store / Play Store production (use only after `prd-internal` sign-off) |
