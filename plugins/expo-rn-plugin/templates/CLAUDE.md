@@ -76,4 +76,4 @@ Both assets **must have transparent backgrounds** — the app's theme controls t
 - **i18n:** full module at `src/i18n/` — root `lingui.config.ts` is a thin re-export only
 - **Theme:** Figma tokens in `src/theme/{themes,tamagui.config}/` — root `tamagui.config.ts` is a thin re-export only
 - Storage: `expo-secure-store` (tokens) · MMKV/Zustand (UI) · AsyncStorage (cache)
-- OTA: `eas update --channel production --message "…"`
+- OTA: self-hosted via Supabase — `yarn push-ota` (stg) / `yarn push-ota:prd` (prd) — see `/ota`

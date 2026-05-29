@@ -498,18 +498,18 @@ Edge functions are Deno — exclude them from the React Native tsconfig or `tsc`
 "exclude": ["node_modules", "supabase/functions"]
 ```
 
-### Excluding internal functions from the OpenAPI spec
+### Excluding functions from the OpenAPI spec
 
 The `@ksairi-org/react-query-sdk` spec generator scans every subdirectory of `supabase/functions/` and generates OpenAPI 3.0 entries for each. When merged with the Supabase REST spec (Swagger 2.0), the version mismatch causes orval validation to fail.
 
-Functions that are server-side only (cron jobs, webhooks, internal triggers — not callable by the app) must be marked so the generator skips them:
+**Every edge function must start with `// @openapi-internal` unless it is explicitly a typed client API endpoint that should appear in the generated React Query SDK.** In practice, all functions in this project use `// @openapi-internal` — cron jobs, webhooks, admin tools, push senders, device-facing custom protocols (e.g. OTA manifest), and dev helpers all qualify.
 
 ```ts
-// @openapi-internal — cron-triggered, not callable by the app client
+// @openapi-internal — <one-line description of what this function does>
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 ```
 
-The generator (patched in node_modules) skips any `index.ts` containing `// @openapi-internal`. Apply this marker to every edge function that is not a client-facing endpoint.
+The generator skips any `index.ts` that contains `// @openapi-internal`. Forgetting this line causes `yarn start` to fail with an orval OpenAPI validation error.
 
 ### Deploying without Docker
 
@@ -661,7 +661,7 @@ Typical uses: FCM pipeline test buttons, RC customer ID display, internal debug 
 
 For dev-only backend tools (e.g. `send-test-push`), still deploy to all environments (stg + prd). The app only calls them from `__DEV__` builds, so they're harmless in production but don't need special environment checks.
 
-Mark them `// @openapi-internal` so they're excluded from the generated spec.
+Mark them `// @openapi-internal` (required for all edge functions — see above).
 
 ## i18n — dev-only strings
 

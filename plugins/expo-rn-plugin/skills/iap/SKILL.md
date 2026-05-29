@@ -74,9 +74,12 @@ const identifyRevenueCatUser = async (userId: string) => {
 
 const resetRevenueCatUser = async () => {
   try {
-    await Purchases.logOut()
+    const info = await Purchases.getCustomerInfo()
+    if (!info.originalAppUserId.startsWith('$RCAnonymousID:')) {
+      await Purchases.logOut()
+    }
   } catch {
-    // user was already anonymous — nothing to reset
+    // RC not configured or already anonymous — nothing to reset
   }
 }
 
@@ -100,7 +103,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 })
 ```
 
-- **Never call `logOut` on initial load** — if the user is anonymous RC throws "LogOut was called but the current user is anonymous"
+- **Guard `logOut` with an anonymous check** — RC throws and logs "Called logOut but the current user is anonymous" when `logOut` is called on a never-identified user (e.g. fresh install). Check `originalAppUserId.startsWith('$RCAnonymousID:')` before calling `logOut`; the pattern above handles this
 - Only call `logOut` on `SIGNED_OUT` event, not on every null session
 - Customers appear in the RC dashboard searchable by their Supabase user ID once `logIn` is called
 - **Do not guard with `Device.isDevice`** — that is an outdated pattern; RC v5+ handles simulator gracefully
