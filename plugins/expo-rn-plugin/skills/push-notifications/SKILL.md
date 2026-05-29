@@ -14,7 +14,15 @@ Apply the following push notification standards to all code in this project.
 ## Setup checklist
 
 - `yarn expo install expo-notifications expo-device @react-native-firebase/messaging`
-- Add `"expo-notifications"` to the plugins array in `app.config.ts`
+- Add `expo-notifications` to the plugins array in `app.config.ts` with icon + color:
+  ```ts
+  ["expo-notifications", {
+    icon: "./assets/images/notification-icon.png",
+    color: "#ffffff",
+    enableBackgroundRemoteNotifications: true,
+  }]
+  ```
+  Create `assets/images/notification-icon.png` — white/transparent PNG (Android renders notification icons using alpha channel only; color is ignored). Keeping it separate from `adaptive-icon.png` lets you update it independently.
 - Add `"@firebase-messaging": ["src/services/firebase-messaging/index.ts"]` to `tsconfig.json` paths
 - Firebase project must have FCM enabled (Cloud Messaging tab in Firebase console)
 - Run `inspect_push_tokens` MCP tool to check if `device_tokens` table exists — apply the generated migration if not
@@ -27,6 +35,16 @@ import { getApp } from '@react-native-firebase/app'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Device from 'expo-device'
 import * as ExpoNotifications from 'expo-notifications'
+
+if (Platform.OS === 'android') {
+  ExpoNotifications.setNotificationChannelAsync('default', {
+    name: 'Default',
+    importance: ExpoNotifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    // Do NOT pass sound: 'default' — expo-notifications treats it as a custom file lookup
+    // and logs a warning. Omitting it uses the system default sound.
+  })
+}
 
 ExpoNotifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -110,6 +128,36 @@ export async function cancelDailyReminder(): Promise<void> {
   }
 }
 ```
+
+## Background handler (`index.js`)
+
+Register the FCM background handler at the module level in `index.js`, before `expo-router/entry`:
+
+```js
+import messaging from '@react-native-firebase/messaging'
+import * as ExpoNotifications from 'expo-notifications'
+import { Platform } from 'react-native'
+
+// FCM automatically displays notification-payload messages — only handle data-only messages here.
+messaging().setBackgroundMessageHandler(async remoteMessage => {
+  if (remoteMessage.notification) return
+
+  const title = remoteMessage.data?.title
+  const body = remoteMessage.data?.body
+  if (!title && !body) return
+
+  if (Platform.OS === 'android') {
+    await ExpoNotifications.scheduleNotificationAsync({
+      content: { title: title ?? 'App', body: body ?? '' },
+      trigger: null,
+    })
+  }
+})
+
+import 'expo-router/entry'
+```
+
+**Critical:** if the FCM payload contains a `notification` key, Android FCM displays the notification automatically. Scheduling a local notification in the handler too causes a duplicate. Return early when `remoteMessage.notification` is present — only schedule for data-only messages.
 
 ## Token registration (`src/services/user-devices/index.ts`)
 
@@ -204,4 +252,6 @@ RLS: owner policy on `user_id = auth.uid()`.
 - Never use `shouldShowAlert` in `setNotificationHandler` — it is deprecated; use `shouldShowBanner` + `shouldShowList`
 - Upsert with `onConflict: 'user_id'` — one token row per user, refreshed on each sign-in
 - `scheduleDailyReminder` must cancel the previous notification ID before scheduling a new one — otherwise duplicate reminders accumulate
+- In `setBackgroundMessageHandler`, return early when `remoteMessage.notification` is present — FCM already displays it; scheduling a local notification too causes duplicates
+- Never pass `sound: 'default'` to `setNotificationChannelAsync` — expo-notifications treats it as a custom file lookup and logs a warning; omit it to use the system default
 - Token column in DB is `fcm_token`, not `token` — `inspect_push_tokens` handles both via introspection, but migrations should use `fcm_token` for clarity
