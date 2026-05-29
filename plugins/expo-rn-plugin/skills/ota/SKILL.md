@@ -23,7 +23,14 @@ The store build is still required when native code changes. OTA handles JS-only 
 4. Deploy the Edge Function to stg and prd
 5. Set Doppler vars (`EXPO_UPDATE_URL`, `EXPO_UPDATE_CHANNEL`) in stg and prd
 6. Add `scripts/push-ota-update.mjs` and `.github/workflows/expo-ota-update.yml`
-7. Do one native rebuild so `expo-updates` is embedded in the binary
+7. Add path filters to the store build workflow so it only runs on native-touching files
+8. Do one native rebuild so `expo-updates` is embedded in the binary
+
+The two CI workflows are mutually exclusive by path:
+- **Store build** (`expo-store-deploy.yml`) → `package.json`, `yarn.lock`, `app.config.ts`, `eas.json`
+- **OTA push** (`expo-ota-update.yml`) → `src/**`, `assets/**`, `index.js`, `lingui.config.ts`
+
+A push touching both (e.g. bumping a package and fixing a screen) correctly triggers the store build only — the new binary embeds the latest JS anyway.
 
 ## app.config.ts
 
@@ -260,6 +267,11 @@ name: Push OTA Update
 on:
   push:
     branches: [stg, main]
+    paths:
+      - 'src/**'
+      - 'assets/**'
+      - 'index.js'
+      - 'lingui.config.ts'
   workflow_dispatch:
     inputs:
       environment:
