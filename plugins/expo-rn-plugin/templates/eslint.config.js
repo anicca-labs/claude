@@ -13,6 +13,7 @@ module.exports = defineConfig([
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": "error",
+      "import/prefer-default-export": "off", // we export at end of file with export { }
     },
   },
   // Must be last — disables ESLint rules that conflict with Prettier formatting

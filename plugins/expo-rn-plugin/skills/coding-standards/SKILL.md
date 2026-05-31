@@ -35,8 +35,12 @@ If a third-party package requires native changes and has no config plugin, check
 - Never use `any` — use proper types, generics, or type guards
 - Never use `as` assertions — fix types at the source
 - After any code change, run `tsc --noEmit` and fix **all** errors (zero errors is a baseline)
-- Named exports only — no `export default`. One file = one component/hook; the file name and export name match 1:1
+- Named exports only — no `export default` (exception: Expo Router `app/` files require it). One file = one component/hook; the file name and export name match 1:1
+- Always export at the bottom of the file — declare with `const`, export in a single `export { }` statement at the end; never inline `export const`
 - No `React.FC` — type props inline or with a separate `type Props = {…}`
+- Never import React as a default — `import React from 'react'` is not needed with the new JSX transform; import only what you use: `import { useState, useEffect, useRef } from 'react'`
+- Never use `React.useState`, `React.useEffect`, `React.useCallback` etc. — always use the named import directly
+- Arrow functions everywhere — `const MyComponent = () => …` and `export const MyScreen = () => …`; never `function` declarations for components, hooks, or helpers
 - Prefer union types over multiple boolean flags: `type Status = "idle" | "loading" | "error"` instead of `isLoading + hasError`
 - Type/interface names: no `T` or `I` prefix; self-documenting plain English; no abbreviations (except universally known ones like `API`, `URL`)
 - Helper function naming: `get*` / `set*` / `create*` for synchronous; `fetch*` / `post*` / `patch*` / `delete*` for API calls; `is*` / `are*` for type guards and predicates
@@ -211,6 +215,39 @@ const firstName = useUserStore((state) => state.firstName);
 // Bad — re-renders on any store change
 const store = useUserStore();
 ```
+
+## Tab Navigation Setup
+
+Every app with a tab navigator must install `react-native-pager-view` and `@react-navigation/material-top-tabs` **before the first native build**:
+
+```bash
+yarn expo install react-native-pager-view @react-navigation/material-top-tabs
+```
+
+Use `withLayoutContext(createMaterialTopTabNavigator().Navigator)` in `app/(tabs)/_layout.tsx` for animated carousel swipe between tabs. Installing after the first build requires a full EAS rebuild — do it upfront.
+
+## Resetting UI state on tab blur
+
+Any open or expanded UI state — swipeables, accordions, bottom sheets, inline menus — must be reset when a tab loses focus. With a pager navigator, the screen stays mounted, so stale open state is visible when the user swipes back.
+
+Reset in the `useFocusEffect` cleanup, and use an **instant** reset (not animated) to avoid a visible flash during the pager's return transition:
+
+```tsx
+const [closeKey, setCloseKey] = useState(0)
+
+useFocusEffect(
+  React.useCallback(() => {
+    return () => setCloseKey(k => k + 1) // fires on blur, not on focus
+  }, [])
+)
+
+// In the child component:
+React.useEffect(() => {
+  if (closeKey > 0) ref.current?.reset() // reset(), not close() — instant, no animation
+}, [closeKey])
+```
+
+`close()` runs an animation that can still be seen as the pager slides the screen back in. `reset()` snaps instantly while the screen is off-screen.
 
 ## Settings Tab
 
