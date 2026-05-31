@@ -11,10 +11,28 @@
         "simulator": true
       }
     },
+    "development-device": {
+      "extends": "development",
+      "ios": {
+        "simulator": false
+      }
+    },
     "preview": {
       "distribution": "internal",
       "ios": {
         "simulator": false
+      }
+    },
+    "preview-simulator": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview-apk": {
+      "extends": "preview",
+      "android": {
+        "buildType": "apk"
       }
     },
     "prd": {
@@ -33,17 +51,6 @@
         "releaseStatus": "draft"
       }
     },
-    "prd-internal": {
-      "ios": {
-        "appleId": "your@apple.id",
-        "ascAppId": "YOUR_PRD_ASC_APP_ID"
-      },
-      "android": {
-        "serviceAccountKeyPath": "./google-service-account.json",
-        "track": "internal",
-        "releaseStatus": "draft"
-      }
-    },
     "prd": {
       "ios": {
         "appleId": "your@apple.id",
@@ -51,7 +58,14 @@
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
-        "track": "production"
+        "track": "production",
+        "releaseStatus": "draft"
+      }
+    },
+    "prd-internal": {
+      "extends": "prd",
+      "android": {
+        "track": "internal"
       }
     }
   }

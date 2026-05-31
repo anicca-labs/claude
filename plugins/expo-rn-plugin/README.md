@@ -113,18 +113,28 @@ Set both `REVENUECAT_API_KEY` (iOS `appl_…`) and `REVENUECAT_ANDROID_API_KEY` 
 
 ### 5. Release workflow
 
-| Script | What it does |
-| --- | --- |
-| `yarn dev-client-ios` / `yarn dev-client-android` | Build a dev client for stg (simulator / device) |
-| `yarn dev-client-ios:prd` / `yarn dev-client-android:prd` | Build a dev client for prd (real purchases, real auth) |
-| `yarn dev-client-ios-device` / `yarn dev-client-android-device` | Build a dev client for a physical device (stg) |
-| `yarn build-sim` / `yarn build-sim:prd` | Build a bundled iOS app for simulator — use when testing without a dev server (splash, startup, OTA excluded — sim can't test OTA) |
-| `yarn build-ipa` / `yarn build-ipa:prd` | Build a bundled IPA for iOS device — required for OTA testing |
-| `yarn build-apk` / `yarn build-apk:prd` | Build a bundled APK for Android emulator/device — required for OTA testing (no simulator distinction on Android) |
-| `yarn push-ota` / `yarn push-ota:prd` | Export JS bundle and push as an OTA update — requires `build-ipa` or `build-apk` binary installed, no dev server running |
-| `yarn build-store-ios:prd` / `yarn build-store-android:prd` | Build a production IPA / AAB without submitting |
-| `yarn deploy-store-all:prd-internal` | **Recommended release flow** — build prd + submit to TestFlight / Play internal testing for final verification with real purchases |
-| `yarn deploy-store-all:prd` | Submit directly to App Store / Play Store production (use only after `prd-internal` sign-off) |
+| Script | Output | What it does |
+| --- | --- | --- |
+| `yarn dev-client-ios` / `yarn dev-client-android` | `sim-dev-client-stg.{tar.gz,apk}` | Dev client for simulator / emulator (stg) |
+| `yarn dev-client-ios:prd` / `yarn dev-client-android:prd` | `sim-dev-client-prd.{tar.gz,apk}` | Dev client for simulator / emulator (prd — real purchases, real auth) |
+| `yarn dev-client-ios-device` / `yarn dev-client-android-device` | `device-dev-client-stg.{ipa,apk}` | Dev client for physical device (stg) |
+| `yarn dev-client-ios-device:prd` / `yarn dev-client-android-device:prd` | `device-dev-client-prd.{ipa,apk}` | Dev client for physical device (prd) |
+| `yarn build-sim` / `yarn build-sim:prd` | `sim-app-build-{stg,prd}.tar.gz` | Bundled iOS app for simulator — no dev server needed; use for splash/startup testing (OTA excluded — sim can't test OTA) |
+| `yarn build-ipa` / `yarn build-ipa:prd` | `device-app-build-{stg,prd}.ipa` | Bundled IPA for iOS device — required for OTA testing |
+| `yarn build-apk` / `yarn build-apk:prd` | `device-app-build-{stg,prd}.apk` | Bundled APK for Android device/emulator — required for OTA testing |
+| `yarn push-ota` / `yarn push-ota:prd` | — | Export JS bundle and push as an OTA update — requires `build-ipa` or `build-apk` binary installed, no dev server running |
+| `yarn build-store-ios` / `yarn build-store-android` | `store-build-stg.{ipa,aab}` | Store build for stg — submits to TestFlight / Play internal track |
+| `yarn build-store-ios:prd` / `yarn build-store-android:prd` | `store-build-prd.{ipa,aab}` | Store build for prd without submitting |
+| `yarn deploy-store-all:prd-internal` | — | **Recommended release flow** — build prd + submit to TestFlight / Play internal testing for final verification with real purchases |
+| `yarn deploy-store-all:prd` | — | Submit directly to App Store / Play Store production (use only after `prd-internal` sign-off) |
+
+**Installing iOS simulator builds:** EAS local builds for the simulator are `.tar.gz` archives containing the `.app` bundle. Extract and install with:
+
+```bash
+tar -xf sim-dev-client-stg.tar.gz
+xcrun simctl install booted *.app
+rm -rf *.app
+```
 
 **Recommended release steps:**
 
