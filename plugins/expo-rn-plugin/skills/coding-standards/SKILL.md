@@ -582,7 +582,7 @@ await supabase.from('device_tokens').upsert(
 
 ## Supabase deployment rule
 
-**Always deploy every fix — edge functions, migrations, RLS policies, DB changes — to both stg AND prd.** Never leave one environment behind. Use the project's npm scripts:
+**Always apply every server-side fix — edge functions, migrations, RLS policies, DB schema changes — to both stg AND prd.** Client code is shared and deployed once, but server-side changes are per-project. Never leave one Supabase project behind. Use the project's npm scripts:
 
 ```bash
 yarn functions:deploy:stg   # or the equivalent for migrations
