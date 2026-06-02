@@ -1,3 +1,7 @@
 {
-  "subagentStatusLine": true
+  "subagentStatusLine": true,
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  }
 }

@@ -283,12 +283,26 @@ function alert({ title, message, preset = 'heart', duration = 6 }: AlertOptions)
 ## Setting up products (production)
 
 1. Create products/subscriptions in App Store Connect and Google Play Console.
-2. In App Store Connect, the product status must be **Ready to Submit** before it appears in RevenueCat's import flow.
-3. In Google Play, the BILLING permission must be in an uploaded `.aab` before products can be configured. Add to `app.config.ts` if not auto-included:
+2. **App Store product IDs are globally unique across your entire developer account** — not scoped per app or bundle ID. If you have multiple environments (stg, prd), each needs distinct product IDs. Convention:
+   - stg: `com.myapp.pro_monthly`, `com.myapp.pro_annual`
+   - prd: `com.myapp.prod.pro_monthly`, `com.myapp.prod.pro_annual`
+   Attempting to reuse the same ID in a second app will be rejected by App Store Connect. Google Play does not have this constraint — IDs are scoped per app.
+3. In App Store Connect, the product status must be **Ready to Submit** before it appears in RevenueCat's import flow. **Your first subscription must be submitted alongside a new app binary** — attach it to the version in the "In-App Purchases and Subscriptions" section before submitting to App Review. Once that first submission is approved, additional subscriptions can be submitted independently from the Subscriptions section without a new binary.
+4. In Google Play, the BILLING permission must be in an uploaded `.aab` before products can be configured. Add to `app.config.ts` if not auto-included:
    ```ts
    android: { permissions: ['com.android.vending.BILLING'] }
    ```
-4. Import products into RevenueCat via **Product catalog → Products → Import**.
+5. Import products into RevenueCat via **Product catalog → Products → Import**.
+
+## Fixing a wrong store identifier in RC
+
+The RC v2 API has no PATCH endpoint for products — store identifiers cannot be updated in place. To correct one:
+
+1. Delete the product: `DELETE /v2/projects/{project_id}/products/{product_id}`
+2. Recreate it with the correct `store_identifier`: `POST /v2/projects/{project_id}/products`
+   - Omit the `subscription` duration field for non-Test Store apps (only Test Store supports it via API)
+3. Re-attach to any packages: `POST /v2/projects/{project_id}/packages/{package_id}/actions/attach_products`
+4. Re-attach to the entitlement: `POST /v2/projects/{project_id}/entitlements/{entitlement_id}/actions/attach_products`
 
 ## Defining offerings and entitlements
 

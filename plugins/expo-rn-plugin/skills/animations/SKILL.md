@@ -155,6 +155,65 @@ xcrun simctl install booted <path-to.app>
 xcrun simctl launch booted <bundle-id>
 ```
 
+## ReanimatedSwipeable (swipe-to-delete)
+
+Use `ReanimatedSwipeable` from `react-native-gesture-handler/ReanimatedSwipeable` for swipe-to-reveal action rows (e.g. delete). Requires `GestureHandlerRootView` at the app root (already present in `app/_layout.tsx`).
+
+```tsx
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable'
+import { useRef, type ComponentRef } from 'react'
+
+const ref = useRef<ComponentRef<typeof ReanimatedSwipeable>>(null)
+
+<ReanimatedSwipeable
+  ref={ref}
+  renderRightActions={() => <DeleteAction onPress={confirmDelete} />}
+  rightThreshold={60}
+>
+  <RowContent />
+</ReanimatedSwipeable>
+```
+
+**Put the handler on the action, not `onSwipeableOpen`.** Wire `onPress` directly to the action button so the user taps to confirm after swiping. `onSwipeableOpen` fires the moment the swipe threshold is crossed — before the user taps anything.
+
+```tsx
+// ✅ correct — tap the revealed button to confirm
+const DeleteAction = ({ onPress }: { onPress: () => void }) => (
+  <BaseTouchable onPress={onPress} bg="$red10" justify="center" items="center" width={72} rounded="$4">
+    <Ionicons name="trash-outline" size={22} color="white" />
+  </BaseTouchable>
+)
+```
+
+**Direction gotcha.** If you do use `onSwipeableOpen`, the `direction` parameter is the side that opened, not the swipe direction — they are opposite:
+
+| User swipes | Side that opens | `direction` value |
+| --- | --- | --- |
+| left | right actions | `'left'` |
+| right | left actions | `'right'` |
+
+```tsx
+// ✅ right actions (renderRightActions) → direction is 'left'
+onSwipeableOpen={(direction) => {
+  if (direction !== 'left') return
+  handleDelete()
+}}
+```
+
+**Tab navigator conflict.** `MaterialTopTabNavigator` with `swipeEnabled: true` intercepts horizontal swipes before `ReanimatedSwipeable` can handle them. Disable tab swiping on any screen that contains swipeable rows:
+
+```tsx
+<MaterialTopTabs.Screen
+  name="reflections"
+  options={{
+    swipeEnabled: false,   // lets ReanimatedSwipeable win the gesture
+    title: t`Reflections`,
+  }}
+/>
+```
+
+This works because `MaterialTopTabView` reads `focusedOptions.swipeEnabled` and passes it to the underlying `TabView`/`PagerView` when the screen is active.
+
 ## When to use which
 
 | Use case | Library |

@@ -23,14 +23,14 @@ The store build is still required when native code changes. OTA handles JS-only 
 4. Deploy the Edge Function to stg and prd
 5. Set Doppler vars (`EXPO_UPDATE_URL`, `EXPO_UPDATE_CHANNEL`) in stg and prd
 6. Add `scripts/push-ota-update.mjs` and `.github/workflows/expo-ota-update.yml`
-7. Add path filters to the store build workflow so it only runs on native-touching files
-8. Do one native rebuild so `expo-updates` is embedded in the binary
+7. Apply the iOS native patch (see **iOS native patch** section below)
+8. Add path filters to the store build workflow so it only runs on native-touching files
+9. Do one native rebuild so `expo-updates` is embedded in the binary
 
 The two CI workflows are mutually exclusive by path:
+
 - **Store build** (`expo-store-deploy.yml`) → `package.json`, `yarn.lock`, `app.config.ts`, `eas.json`
 - **OTA push** (`expo-ota-update.yml`) → `src/**`, `assets/**`, `index.js`, `lingui.config.ts`
-
-A push touching both (e.g. bumping a package and fixing a screen) correctly triggers the store build only — the new binary embeds the latest JS anyway.
 
 ## app.config.ts
 
@@ -99,6 +99,12 @@ Apply via the Supabase Management API or dashboard. Repeat for both stg and prd 
 
 ## Edge Function (`supabase/functions/expo-update-manifest/index.ts`)
 
+**Critical details for iOS:**
+
+- `createdAt` must use `+00:00` format, not `Z` — iOS `NSDateFormatter` with `ZZZZZ` pattern doesn't parse `Z`
+- Multipart body must end with `\r\n` after the closing boundary
+- Cache headers must prevent CDN caching (`no-store`) so every request hits the function
+
 ```ts
 // @openapi-internal — device-facing OTA manifest server, not a client API endpoint
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -106,7 +112,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-type Asset = { hash: string; key: string; contentType: string; url: string }
+type Asset = { hash: string; key: string; fileExtension?: string; contentType: string; url: string }
 type ExpoUpdate = {
   id: string; channel: string; platform: string; runtime_version: string
   created_at: string; launch_asset: Asset; assets: Asset[]
@@ -119,14 +125,15 @@ function buildMultipart(boundary: string, parts: Array<{ name: string; contentTy
     `Content-Disposition: form-data; name="${p.name}"`, '', p.body,
   ])
   chunks.push(`--${boundary}--`)
-  return chunks.join('\r\n')
+  // iOS expo-updates requires CRLF after the closing boundary
+  return chunks.join('\r\n') + '\r\n'
 }
 
 function noUpdateResponse(): Response {
   const boundary = 'expo-update-boundary'
   return new Response(
     buildMultipart(boundary, [{ name: 'directive', contentType: 'application/json', body: JSON.stringify({ type: 'noUpdateAvailable' }) }]),
-    { headers: { 'expo-protocol-version': '1', 'expo-sfv-version': '0', 'cache-control': 'private, max-age=0', 'content-type': `multipart/mixed; boundary="${boundary}"` } },
+    { headers: { 'expo-protocol-version': '1', 'expo-sfv-version': '0', 'cache-control': 'no-store, no-cache, must-revalidate', 'content-type': `multipart/mixed; boundary="${boundary}"` } },
   )
 }
 
@@ -150,35 +157,62 @@ Deno.serve(async (req) => {
 
   if (!update || update.id === currentUpdateId) return noUpdateResponse()
 
-  const manifest = { id: update.id, createdAt: update.created_at, runtimeVersion, assets: update.assets, launchAsset: update.launch_asset, metadata: {}, extra: update.extra }
+  const manifest = {
+    id: update.id,
+    // +00:00 format required — iOS NSDateFormatter ZZZZZ pattern doesn't parse literal 'Z'
+    createdAt: new Date(update.created_at).toISOString().replace('Z', '+00:00'),
+    runtimeVersion,
+    assets: update.assets,
+    launchAsset: update.launch_asset,
+    metadata: {},
+    extra: update.extra,
+  }
   const boundary = 'expo-update-boundary'
   return new Response(
     buildMultipart(boundary, [{ name: 'manifest', contentType: 'application/json', body: JSON.stringify(manifest) }]),
-    { headers: { 'expo-protocol-version': '1', 'expo-sfv-version': '0', 'cache-control': 'private, max-age=0', 'content-type': `multipart/mixed; boundary="${boundary}"` } },
+    { headers: {
+      'expo-protocol-version': '1', 'expo-sfv-version': '0',
+      'cache-control': 'no-store, no-cache, must-revalidate',
+      'pragma': 'no-cache', 'expires': '0',
+      'vary': 'expo-current-update-id, expo-channel-name, expo-platform',
+      'content-type': `multipart/mixed; boundary="${boundary}"`,
+    }},
   )
 })
 ```
 
 Deploy with `--no-verify-jwt` — devices call it without auth:
+
 ```bash
 supabase functions deploy expo-update-manifest --no-verify-jwt --project-ref <ref>
 ```
 
+**Always deploy to both stg AND prd** whenever the edge function changes. Use the project's npm scripts:
+
+```bash
+yarn functions:deploy:stg
+yarn functions:deploy:prd
+```
+
+Never deploy to just one — production users will get a different manifest behaviour than staging users and bugs will be hard to reproduce.
+
 ## Upload script (`scripts/push-ota-update.mjs`)
 
-Reads `dist/metadata.json` (output of `expo export --output-dir dist`), uploads bundles + assets to Storage, inserts into DB.
+**Two critical requirements discovered through iOS debugging:**
 
-Required env vars (all injected by Doppler in CI):
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `EXPO_UPDATE_CHANNEL` (`stg` or `prd`)
-- `EXPO_RUNTIME_VERSION` (match `package.json` version — both use `appVersion` policy)
+1. **Bundle key must be unique per OTA** — use `platformMeta.bundle` (the filename, which includes its hash) as the key. If you use a static key like `'bundle'`, expo-updates caches the first bundle forever by that key and never re-downloads subsequent bundles, even when the OTA changes. The app reports the new OTA ID but silently executes the old code.
+
+2. **`extra.expoClient` must contain the app config** — expo-linking reads the URI scheme from `Constants.expoConfig`, which comes from `extra.expoClient` in the OTA manifest. Without it, the app crashes on launch with `expo-linking needs access to the expo-constants manifest`.
 
 ```js
 #!/usr/bin/env node
 import fs from 'fs'
+import { createRequire } from 'module'
 import path from 'path'
 import crypto from 'crypto'
+
+const require = createRequire(import.meta.url)
+const { getConfig } = require('@expo/config')
 
 const SUPABASE_URL = requireEnv('SUPABASE_URL')
 const SERVICE_ROLE_KEY = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
@@ -195,7 +229,8 @@ function requireEnv(name) {
 
 function sha256b64(filePath) {
   const content = fs.readFileSync(filePath)
-  return `sha256:${crypto.createHash('sha256').update(content).digest('base64')}`
+  // expo-updates iOS compares as base64url — no 'sha256:' prefix
+  return crypto.createHash('sha256').update(content).digest('base64url')
 }
 
 function extToContentType(ext) {
@@ -223,7 +258,7 @@ async function insertUpdate(row) {
   if (!res.ok) throw new Error(`DB insert failed: ${res.status} ${await res.text()}`)
 }
 
-async function pushPlatform(platform, metadata, updateId) {
+async function pushPlatform(platform, metadata, updateId, expoConfig) {
   const platformMeta = metadata.fileMetadata?.[platform]
   if (!platformMeta?.bundle) { console.log(`  no ${platform} bundle in export, skipping`); return }
 
@@ -240,11 +275,28 @@ async function pushPlatform(platform, metadata, updateId) {
     if (!fs.existsSync(localPath)) { console.warn(`  warn: asset not found: ${localPath}`); continue }
     const contentType = extToContentType(asset.ext)
     await uploadFile(localPath, `${prefix}/${asset.path}`, contentType)
-    // fileExtension is required by expo-updates — omitting it causes JSONException and the update silently fails
+    // fileExtension is required by expo-updates — omitting it causes JSONException on iOS
     assets.push({ hash: sha256b64(localPath), key: asset.path, fileExtension: `.${asset.ext}`, contentType, url: `${storageBase}/${prefix}/${asset.path}` })
   }
 
-  await insertUpdate({ id: updateId, channel: CHANNEL, platform, runtime_version: RUNTIME_VERSION, launch_asset: { hash: sha256b64(bundleLocalPath), key: 'bundle', fileExtension: path.extname(platformMeta.bundle) || '.bundle', contentType: 'application/javascript', url: `${storageBase}/${prefix}/${platformMeta.bundle}` }, assets, extra: {}, active: true })
+  await insertUpdate({
+    id: updateId, channel: CHANNEL, platform, runtime_version: RUNTIME_VERSION,
+    launch_asset: {
+      hash: sha256b64(bundleLocalPath),
+      // CRITICAL: use the bundle filename as key — it includes the content hash, making it
+      // unique per OTA. A static key like 'bundle' causes expo-updates to reuse the first
+      // bundle ever downloaded, silently running old code for every subsequent update.
+      key: platformMeta.bundle,
+      fileExtension: path.extname(platformMeta.bundle) || '.bundle',
+      contentType: 'application/javascript',
+      url: `${storageBase}/${prefix}/${platformMeta.bundle}`,
+    },
+    assets,
+    // expoClient required — expo-linking reads the URI scheme from Constants.expoConfig,
+    // which comes from extra.expoClient. Without it the app crashes on OTA launch.
+    extra: { expoClient: expoConfig },
+    active: true,
+  })
   console.log(`  ✓ registered in DB`)
 }
 
@@ -252,13 +304,75 @@ async function main() {
   const metadataPath = path.join(DIST_DIR, 'metadata.json')
   if (!fs.existsSync(metadataPath)) throw new Error(`${metadataPath} not found — run 'yarn expo export --output-dir dist' first`)
   const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'))
-  await pushPlatform('ios', metadata, crypto.randomUUID())
-  await pushPlatform('android', metadata, crypto.randomUUID())
+  const { exp: expoConfig } = getConfig(process.cwd(), { skipSDKVersionRequirement: true })
+  await pushPlatform('ios', metadata, crypto.randomUUID(), expoConfig)
+  await pushPlatform('android', metadata, crypto.randomUUID(), expoConfig)
   console.log('\nDone.')
 }
 
 main().catch((err) => { console.error(err.message); process.exit(1) })
 ```
+
+Always run the export through Doppler so env vars are correct:
+
+```bash
+doppler run --project mobile --config stg -- yarn expo export --clear --platform ios --platform android --output-dir dist
+```
+
+The `--clear` flag prevents Metro from serving a cached bundle with stale module IDs.
+
+## iOS native patch (required)
+
+expo-updates iOS has two bugs when used with Supabase Storage that require patching `FileDownloader.swift` via `yarn patch`. Apply once and commit — Yarn re-applies on every `yarn install` including EAS local builds.
+
+**To create/update the patch:**
+
+```bash
+yarn patch expo-updates
+# edit /tmp/.../user/ios/EXUpdates/AppLoader/FileDownloader.swift
+yarn patch-commit -s /tmp/...
+yarn install   # updates yarn.lock hash
+```
+
+**Patch 1 — missing assets directory** (`downloadAsset` function, before `data.write`):
+
+Supabase storage assets are written to `.expo-internal/assets/` but expo-updates doesn't create that directory. Without the fix every asset write fails with `NSCocoaErrorDomain Code=4 "The folder doesn't exist"`.
+
+```swift
+do {
+  // ADD THESE TWO LINES before data.write:
+  let destDir = (destinationPath as NSString).deletingLastPathComponent
+  try FileManager.default.createDirectory(atPath: destDir, withIntermediateDirectories: true, attributes: nil)
+  try data.write(to: URL(fileURLWithPath: destinationPath), options: .atomic)
+```
+
+**Patch 2 — 304 retry for cached ETags** (`downloadData(withRequest:)` function):
+
+NSURLSession caches ETags from Supabase CDN. On subsequent requests it sends `If-None-Match`, the CDN returns 304 with nil data, and expo-updates fails with `ERR_UPDATES_FETCH: failed to load all assets`. The fix retries 304 responses with conditional headers stripped.
+
+```swift
+// Also add to createManifestRequest and createGenericRequest:
+//   cachePolicy: .reloadIgnoringLocalCacheData
+
+if httpResponse.statusCode == 304 {
+  var freshRequest = request
+  freshRequest.setValue(nil, forHTTPHeaderField: "If-None-Match")
+  freshRequest.setValue(nil, forHTTPHeaderField: "If-Modified-Since")
+  freshRequest.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+  let retryTask = self.session.dataTask(with: freshRequest) { retryData, retryResponse, retryError in
+    guard let retryResponse = retryResponse else {
+      let cause = UpdatesError.fileDownloaderUnknownError(cause: retryError ?? NSError(domain: "EXUpdates", code: 0))
+      errorBlock(cause)
+      return
+    }
+    successBlock(retryData, retryResponse)
+  }
+  retryTask.resume()
+  return
+}
+```
+
+**Do NOT set `urlCache = nil`** on the URLSession configuration — this causes NSURLSession to deliver nil data for all 200 responses.
 
 ## CI workflow (`.github/workflows/expo-ota-update.yml`)
 
@@ -318,29 +432,14 @@ jobs:
 
 ```json
 {
-  "build-apk": "yarn pre-build && doppler run --project mobile --config ${ENV:-stg} -- eas build --platform android --profile preview-apk --local --output ./app-build.apk",
-  "build-apk:prd": "ENV=prd yarn build-apk",
-  "push-ota": "doppler run --project mobile --config ${ENV:-stg} -- bash -c 'yarn expo export --platform ios --platform android --output-dir dist && EXPO_UPDATE_CHANNEL=${ENV:-stg} EXPO_RUNTIME_VERSION=$(node -p \"require(\\\"./package.json\\\").version\") node scripts/push-ota-update.mjs'",
-  "push-ota:prd": "ENV=prd yarn push-ota",
-  "functions:deploy:stg": "... && supabase functions deploy expo-update-manifest --no-verify-jwt --project-ref <stg-ref>",
-  "functions:deploy:prd": "... && supabase functions deploy expo-update-manifest --no-verify-jwt --project-ref <prd-ref>"
+  "build-ipa": "yarn pre-build && echo 'y' | doppler run --project mobile --config ${ENV:-stg} -- eas build --platform ios --profile preview --local --output ./device-app-build-${ENV:-stg}.ipa",
+  "build-ipa:prd": "ENV=prd yarn build-ipa",
+  "push-ota": "doppler run --project mobile --config ${ENV:-stg} -- bash -c 'yarn expo export --clear --platform ios --platform android --output-dir dist && EXPO_UPDATE_CHANNEL=${ENV:-stg} EXPO_RUNTIME_VERSION=$(node -p \"require(\\\"./package.json\\\").version\") node scripts/push-ota-update.mjs'",
+  "push-ota:prd": "ENV=prd yarn push-ota"
 }
 ```
 
-Also add the `preview-apk` profile to `eas.json`:
-
-```json
-{
-  "build": {
-    "preview-apk": {
-      "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      }
-    }
-  }
-}
-```
+Note `echo 'y' |` before the `eas build` command — EAS local builds prompt for confirmation.
 
 ## Doppler vars (set per environment)
 
@@ -390,3 +489,19 @@ You need a real binary with no dev server running:
 Then open the app standalone (just tap the icon, no `yarn start`). On launch it checks for updates (`checkAutomatically: 'ON_LOAD'`). Push a JS change with `yarn push-ota`, kill and reopen — the update appears.
 
 Confirm in Supabase: `api.expo_updates` should have a new active row with correct `channel`, `platform`, and `runtime_version`.
+
+## Known bugs / gotchas
+
+**Android OTA works out of the box. iOS requires all of the following to work:**
+
+| Issue | Symptom | Fix |
+|-------|---------|-----|
+| Missing `assets/` directory | `ERR_UPDATES_FETCH: failed to load all assets` | iOS patch: `createDirectory(withIntermediateDirectories: true)` |
+| NSURLSession ETag caching | `ERR_UPDATES_FETCH` after first successful OTA | iOS patch: 304 retry with stripped conditional headers |
+| Static bundle key `'bundle'` | OTA ID updates but old code runs, no visible changes | Use `platformMeta.bundle` as key (unique per content hash) |
+| Missing `extra.expoClient` | App crashes on OTA launch: `expo-linking needs access to manifest` | Include `expoClient: expoConfig` from `@expo/config` in `extra` |
+| `createdAt` with `Z` suffix | iOS silently rejects manifest, OTA never applies | Use `.replace('Z', '+00:00')` — iOS `NSDateFormatter ZZZZZ` doesn't parse `Z` |
+| Multipart missing trailing CRLF | iOS manifest parse fails | `chunks.join('\r\n') + '\r\n'` after closing boundary |
+| `urlCache = nil` on URLSession | All 200 responses deliver nil data | Do NOT set this — use `reloadIgnoringLocalCacheData` per-request instead |
+| Metro cache in OTA export | Bundle has stale code despite source changes | Always use `--clear` flag: `expo export --clear` |
+| EAS local build wipes patches | NSLog/fixes disappear, OTA reverts to broken | Use `yarn patch` to persist patches — committed to `.yarn/patches/` |

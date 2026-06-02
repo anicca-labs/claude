@@ -249,6 +249,42 @@ React.useEffect(() => {
 
 `close()` runs an animation that can still be seen as the pager slides the screen back in. `reset()` snaps instantly while the screen is off-screen.
 
+## List entrance animations (pager screens)
+
+With a pager navigator, screens stay mounted — a `useEffect([])` inside a list item fires once at app start for all tabs simultaneously, not when the user first visits the tab. Gate the animation on first focus instead:
+
+```tsx
+const [animKey, setAnimKey] = useState(0)
+const hasAnimated = useRef(false)
+
+useFocusEffect(
+  useCallback(() => {
+    if (!hasAnimated.current) {
+      hasAnimated.current = true
+      setAnimKey(1) // triggers animation exactly once
+    }
+  }, [])
+)
+
+// Pass animKey down to each animated list item:
+const AnimatedEntry = ({ index, animKey, children }) => {
+  const tx = useSharedValue(index % 2 === 0 ? -40 : 40)
+  const opacity = useSharedValue(0)
+
+  useEffect(() => {
+    cancelAnimation(tx)
+    cancelAnimation(opacity)
+    tx.value = index % 2 === 0 ? -40 : 40
+    opacity.value = 0
+    tx.value = withDelay(index * 100, withTiming(0, { duration: 500 }))
+    opacity.value = withDelay(index * 100, withTiming(1, { duration: 500 }))
+  }, [animKey])
+  // ...
+}
+```
+
+`cancelAnimation` before resetting the shared value is required — without it, a re-trigger while the previous animation is still running produces a jump.
+
 ## Settings Tab
 
 Every app with a tab navigator must include a **Settings tab**. It is the standard home for account-level and device-level controls that don't belong in content screens.
