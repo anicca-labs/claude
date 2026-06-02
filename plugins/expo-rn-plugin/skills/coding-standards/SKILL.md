@@ -580,6 +580,17 @@ await supabase.from('device_tokens').upsert(
 )
 ```
 
+## Supabase deployment rule
+
+**Always deploy every fix — edge functions, migrations, RLS policies, DB changes — to both stg AND prd.** Never leave one environment behind. Use the project's npm scripts:
+
+```bash
+yarn functions:deploy:stg   # or the equivalent for migrations
+yarn functions:deploy:prd
+```
+
+If only stg is fixed, bugs will be impossible to reproduce in production and users will be affected while staging appears healthy.
+
 ## Supabase Edge Functions
 
 ### tsconfig exclusion
