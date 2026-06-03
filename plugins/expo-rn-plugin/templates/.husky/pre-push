@@ -1,5 +1,11 @@
 #!/usr/bin/env sh
 . "$(dirname "$0")/common.sh"
 
+# Auto-commit any generated i18n files left behind by the pre-commit hook.
+# Always compile, then only commit if the add actually staged something.
+yarn lingui compile
+git add src/i18n/locales/compiled/ src/i18n/locales/exported/
+git diff --cached --quiet src/i18n/locales/ || git commit -m "chore(i18n): recompile catalogs [generated]" --no-verify
+
 yarn check:tsc
 yarn lint
