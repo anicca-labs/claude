@@ -20,6 +20,9 @@ dist/
 # OS
 .DS_Store
 
+# Supabase CLI
+supabase/.temp/
+
 # Build artifacts
 *.ipa
 *.aab
