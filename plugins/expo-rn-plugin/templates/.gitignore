@@ -11,6 +11,7 @@ expo-env.d.ts
 
 # Metro
 .metro-health-check*
+.watchmanconfig
 
 # debug
 npm-debug.*

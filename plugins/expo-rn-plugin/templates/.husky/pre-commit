@@ -1,7 +1,13 @@
 #!/usr/bin/env sh
 . "$(dirname "$0")/common.sh"
 
-# If any i18n file is staged, recompile and re-stage the compiled catalogs
+# If any source file is staged, extract new i18n strings and re-stage the .po catalogs
+if git diff --cached --name-only | grep -qE '\.(tsx?|jsx?)$'; then
+  yarn lingui extract --no-watch
+  git add src/i18n/locales/exported/
+fi
+
+# If any i18n source file is staged, recompile and re-stage the compiled catalogs
 if git diff --cached --name-only | grep -q 'src/i18n/'; then
   yarn lingui compile
   git add src/i18n/locales/compiled/
