@@ -817,6 +817,44 @@ For truly unavoidable cases where a dev string ends up extracted (e.g. inside a 
 
 For Android, the `ios.simulator` flag is ignored — `development` would work for physical Android devices too, but use `development-device` for consistency.
 
+**Required `eas.json` submit profiles:**
+
+```json
+"submit": {
+  "stg": {
+    "ios": {
+      "appleId": "you@example.com",
+      "ascAppId": "<stg App Store Connect app ID>"
+    },
+    "android": {
+      "serviceAccountKeyPath": "./eas-service-account.json",
+      "track": "internal",
+      "releaseStatus": "completed"
+    }
+  },
+  "prd": {
+    "ios": {
+      "appleId": "you@example.com",
+      "ascAppId": "<prd App Store Connect app ID>"
+    },
+    "android": {
+      "serviceAccountKeyPath": "./eas-service-account.json",
+      "track": "production",
+      "releaseStatus": "completed"
+    }
+  },
+  "prd-internal": {
+    "extends": "prd",
+    "android": {
+      "track": "internal"
+    }
+  }
+}
+```
+
+- `releaseStatus: "completed"` is required on both stg and prd — without it, the AAB is uploaded to the artifact library but no release is created, requiring a manual step in the Play Console to pick it up.
+- `prd-internal` lets you push a production build to internal testing first (e.g. for final QA) before promoting to the `production` track.
+
 ## `@ksairi-org` library publishing
 
 `@ksairi-org/*` packages live in the `ksairi-libs` monorepo. CI publishes automatically on push to `main` — never publish manually unless the CI workflow is broken.

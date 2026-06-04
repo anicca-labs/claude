@@ -221,6 +221,24 @@ The `test_` key is platform-agnostic — same key works on iOS simulator and And
 - Test store customers may take a few minutes to appear in the dashboard
 - Remove grant to revert to free tier
 
+## Testing on a real device with Apple Sandbox
+
+The Apple Sandbox account (created in App Store Connect → Users and Access → Sandbox Testers) is only used for the **App Store payment sheet** — it has nothing to do with your app's own authentication (Supabase/social sign-in).
+
+You can stay signed into the app with your real account and still use a sandbox account for purchases:
+
+1. Sign into the app normally (real Apple ID, Google, or email)
+2. **Settings → App Store → tap your Apple ID → Sign Out** (sign out of the *App Store only*, not the whole device)
+3. Trigger a purchase inside the app — iOS will pop up asking for an Apple ID
+4. Enter the sandbox tester credentials at that prompt
+
+The sandbox account intercepts only the payment sheet. Your app session is unaffected.
+
+**Sandbox behavior differences from production:**
+- Subscriptions renew every few minutes (1 month = ~5 min, 1 year = ~1 hr)
+- No real charges — all transactions are free
+- RC dashboard shows sandbox transactions separately under the customer
+
 ## Subscription status in Settings
 
 Always show subscription status in the Settings tab with upgrade and management options:

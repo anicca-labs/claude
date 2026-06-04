@@ -109,3 +109,53 @@ Fix any errors before reporting done.
 - Never edit `en` catalog entries — English is the source language extracted from source code
 - If a string contains interpolation (e.g. `{email}`), double-check the translated version preserves it
 - Run this skill any time `yarn lingui extract` reports missing translations
+
+## Common pitfalls
+
+### Plurals — use `<Plural>`, not a ternary
+
+A JS ternary inside `<Trans>` is not extracted as a translatable plural — it's just a plain string that Lingui never sees:
+
+```tsx
+// ❌ 'entry' and 'entries' will never be translated
+<Trans>Today · {count} {count === 1 ? 'entry' : 'entries'}</Trans>
+
+// ✅ Correct — Lingui extracts this as a proper ICU plural message
+import { Trans, Plural } from '@lingui/react/macro'
+<Trans>Today · <Plural value={count} one="# entry" other="# entries" /></Trans>
+```
+
+`#` in `<Plural>` is replaced by the value at runtime. Arabic and other languages with complex plural rules get all their forms (`one`, `two`, `few`, `other`) handled automatically.
+
+### `t` must be the Lingui macro — not a function parameter
+
+Lingui's extractor does static analysis — it only recognises `t` tagged template literals when `t` comes from `useLingui()` (or is imported directly from `@lingui/core/macro`) inside the same scope. Passing `t` as a parameter to a helper function outside the component means the strings are **never extracted**:
+
+```tsx
+// ❌ Strings not extracted — t is just a parameter name here
+const translateError = (msg: string, t: TFunction) => {
+  return t`Something went wrong`
+}
+
+// ✅ Define the function inside the component where t is in scope
+const { t } = useLingui()
+const translateError = (msg: string) => {
+  return t`Something went wrong`
+}
+```
+
+### Third-party error messages (Supabase, SDKs)
+
+API error messages (e.g. `error.message` from Supabase) are always in English regardless of device locale. Never display them raw — map known error strings to translated `t` messages inside the component:
+
+```tsx
+const { t } = useLingui()
+
+const translateAuthError = (message: string): string => {
+  const lower = message.toLowerCase()
+  if (lower.includes('invalid login credentials')) return t`Invalid email or password`
+  if (lower.includes('email not confirmed')) return t`Please confirm your email before signing in`
+  if (lower.includes('too many requests')) return t`Too many attempts. Please try again later`
+  return message // fallback for unmapped errors
+}
+```
