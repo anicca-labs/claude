@@ -840,7 +840,7 @@ For Android, the `ios.simulator` flag is ignored — `development` would work fo
     "android": {
       "serviceAccountKeyPath": "./eas-service-account.json",
       "track": "production",
-      "releaseStatus": "completed"
+      "releaseStatus": "draft"
     }
   },
   "prd-internal": {
@@ -852,7 +852,8 @@ For Android, the `ios.simulator` flag is ignored — `development` would work fo
 }
 ```
 
-- `releaseStatus: "completed"` is required on both stg and prd — without it, the AAB is uploaded to the artifact library but no release is created, requiring a manual step in the Play Console to pick it up.
+- `stg` uses `releaseStatus: "completed"` — without it, the AAB is uploaded to the artifact library but no release is created, requiring a manual step in the Play Console.
+- `prd` uses `releaseStatus: "draft"` — production releases should be manually reviewed in the Play Console before going live (set rollout %, check release notes, confirm everything).
 - `prd-internal` lets you push a production build to internal testing first (e.g. for final QA) before promoting to the `production` track.
 
 ## `@ksairi-org` library publishing
