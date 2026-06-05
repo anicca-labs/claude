@@ -80,13 +80,56 @@ With this in place, EAS will automatically:
 
 ### 2. Android — let EAS manage the keystore
 
-On first `eas build --platform android`, EAS generates and stores the keystore automatically. After the build, get the SHA-1 it used:
+On first `eas build --platform android`, EAS generates and stores the keystore automatically. Always run credentials through Doppler so EAS picks up the correct bundle ID:
 
 ```bash
-eas credentials --platform android  # shows the SHA-1 fingerprint
+doppler run --project mobile --config stg -- eas credentials
+doppler run --project mobile --config prd -- eas credentials
 ```
 
-Add it to Firebase → Authentication → Google → re-enable to create the Android OAuth client.
+> ⚠️ Never run `eas credentials` without Doppler — the local `.env` may point to the wrong bundle ID, corrupting credential associations.
+
+**Register TWO SHA-1 fingerprints in Firebase, not one:**
+
+Google Play re-signs all AABs with its own App Signing Key. The SHA-1 on the device is **not** the EAS upload keystore SHA-1. You need both registered:
+
+| SHA-1 | Where to find it | Needed for |
+| --- | --- | --- |
+| Upload keystore SHA-1 | `eas credentials` output | Dev client + CI upload builds |
+| Play App Signing SHA-1 | Play Console → Setup → App Integrity → App Signing | Store-distributed builds |
+
+Add both to **Firebase Console → Project Settings → Your Android App → Add fingerprint**, then re-download and commit `google-services.json`. Firebase creates a separate Android OAuth client (type 1) for each — both entries appear in `google-services.json`.
+
+**Apple Sign-In on Android — `assetlinks.json` required:**
+
+`@invertase/react-native-apple-authentication` uses Chrome Custom Tabs to intercept the OAuth callback. Release/store builds enforce Android App Links (Digital Asset Links) verification. Without `assetlinks.json` on the callback domain, the Chrome Custom Tab never returns to the app.
+
+Serve the following at `https://<your-callback-domain>/.well-known/assetlinks.json`:
+
+```json
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.yourapp.stg",
+      "sha256_cert_fingerprints": ["<PLAY_APP_SIGNING_SHA256_STG>"]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.yourapp.prod",
+      "sha256_cert_fingerprints": ["<PLAY_APP_SIGNING_SHA256_PRD>"]
+    }
+  }
+]
+```
+
+The SHA-256 fingerprints come from **Google Play Console → Setup → App Integrity → App Signing certificate** (different from SHA-1). Use Play App Signing SHA-256, not the upload cert.
+
+Keep a reference copy in `docs/android/assetlinks.json` in the app repo. Add `/assetlinks.json` to `.gitignore` to avoid committing the working copy.
 
 ### 3. What still requires manual steps
 
