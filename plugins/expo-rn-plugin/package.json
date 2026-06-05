@@ -1,0 +1,43 @@
+{
+  "name": "@mksairi/expo-rn-plugin",
+  "version": "1.0.0",
+  "description": "Claude Code plugin for React Native / Expo projects. MCP servers, scaffolding, Figma sync, i18n review, and TypeScript code intelligence. Supports Supabase, Firebase, and REST backends.",
+  "author": "Mariano Ksairi <marianoksairi@gmail.com>",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "claude-plugin",
+    "expo",
+    "react-native",
+    "supabase",
+    "firebase",
+    "typescript",
+    "tamagui",
+    "lingui",
+    "eas",
+    "mcp"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ksairi-org/claude.git",
+    "directory": "plugins/expo-rn-plugin"
+  },
+  "homepage": "https://github.com/ksairi-org/claude/tree/main/plugins/expo-rn-plugin#readme",
+  "files": [
+    ".claude-plugin/",
+    "agents/",
+    "bin/",
+    "figma/",
+    "hooks/",
+    "mcps/",
+    "monitors/",
+    "scripts/",
+    "skills/",
+    "templates/",
+    "tools/",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
