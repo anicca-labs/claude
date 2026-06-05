@@ -48,7 +48,7 @@
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
         "track": "internal",
-        "releaseStatus": "draft"
+        "releaseStatus": "completed"
       }
     },
     "prd": {
@@ -58,14 +58,8 @@
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
-        "track": "production",
-        "releaseStatus": "draft"
-      }
-    },
-    "prd-internal": {
-      "extends": "prd",
-      "android": {
-        "track": "internal"
+        "track": "alpha",
+        "releaseStatus": "completed"
       }
     }
   }
