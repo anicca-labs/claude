@@ -415,7 +415,10 @@ When the plugin updates, apps built from it don't auto-update. Apply changes man
 5. **CLAUDE.md** — pull in new "Never do" / "Always do" rules from `templates/CLAUDE.md`
 6. **Skills** — always up to date automatically (loaded fresh each session from the plugin root)
 
-Reference implementation for patterns not covered here: [ksairi-org/virtual-wallet](https://github.com/ksairi-org/virtual-wallet).
+Reference implementations for patterns not covered here:
+
+- [ksairi-org/reflect](https://github.com/ksairi-org/reflect) — journaling/content (OTA, push reminders, streaks, i18n)
+- [ksairi-org/virtual-wallet](https://github.com/ksairi-org/virtual-wallet) — fintech/payments (Stripe, RevenueCat, multi-currency)
 
 ## Project CLAUDE.md
 

@@ -9,14 +9,17 @@ Apply the following standards to all code in this project.
 
 ## Reference implementation — check this FIRST
 
-Before debugging a build error, adding a package, or configuring anything native, check **[ksairi-org/virtual-wallet](https://github.com/ksairi-org/virtual-wallet)** — the canonical production app built on this exact stack.
+Before debugging a build error, adding a package, or configuring anything native, check the reference apps — production apps built on this exact stack:
+
+- **[ksairi-org/reflect](https://github.com/ksairi-org/reflect)** — journaling/content focus; OTA updates, push reminders, streaks, i18n
+- **[ksairi-org/virtual-wallet](https://github.com/ksairi-org/virtual-wallet)** — fintech/payments focus; Stripe, RevenueCat IAP, multi-currency
 
 **Rules:**
-- Build error or native config question → check virtual-wallet's `app.config.ts`, `package.json`, and `eas.json` before any other investigation
-- Adding an Expo SDK package → check if virtual-wallet already uses it and copy its config exactly
-- Tempted to add a config plugin workaround → check if virtual-wallet needs it; if it doesn't, you probably don't either
+- Build error or native config question → check both apps' `app.config.ts`, `package.json`, and `eas.json` before any other investigation
+- Adding an Expo SDK package → check if either reference app already uses it and copy its config exactly
+- Tempted to add a config plugin workaround → check if the reference apps need it; if they don't, you probably don't either
 
-The reference implementation encodes hard-won lessons. Reverse-engineering Gradle/Xcode internals when the answer is already in virtual-wallet wastes time and risks introducing hacks that the SDK would have handled correctly.
+The reference apps encode hard-won lessons. Reverse-engineering Gradle/Xcode internals when the answer is already in a reference app wastes time and risks introducing hacks that the SDK would have handled correctly.
 
 ## Managed workflow — never touch native folders
 
