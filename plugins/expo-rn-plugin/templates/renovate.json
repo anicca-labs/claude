@@ -21,7 +21,12 @@
     {
       "description": "React Native core + community packages",
       "groupName": "React Native",
-      "matchPackageNames": ["react-native", "@react-native/*", "@react-native-community/*", "react-native-*"],
+      "matchPackageNames": [
+        "react-native",
+        "@react-native/*",
+        "@react-native-community/*",
+        "react-native-*"
+      ],
       "automerge": false
     },
     {
@@ -48,7 +53,19 @@
     {
       "description": "Patch-only updates for everything else — automerge safely",
       "matchUpdateTypes": ["patch"],
-      "excludePackageNames": ["expo", "expo-*", "@expo/*", "jest-expo", "react-native", "react-native-*", "@react-native/*", "@react-native-firebase/*", "@react-native-community/*", "tamagui", "@tamagui/*"],
+      "excludePackageNames": [
+        "expo",
+        "expo-*",
+        "@expo/*",
+        "jest-expo",
+        "react-native",
+        "react-native-*",
+        "@react-native/*",
+        "@react-native-firebase/*",
+        "@react-native-community/*",
+        "tamagui",
+        "@tamagui/*"
+      ],
       "automerge": true,
       "automergeType": "pr",
       "platformAutomerge": true
