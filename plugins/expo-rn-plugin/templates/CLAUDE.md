@@ -25,6 +25,12 @@
 - Network calls in Zustand stores — server state → react-query hooks in `src/hooks/`; Zustand is for UI/local state + MMKV persistence only
 - Raw `supabase.auth.*` in screens or stores — encapsulate in a dedicated auth hook
 - Use `src/lib/` — correct dirs are `src/services/{supabase,analytics,firebase-messaging}/` and `src/stores/` (plural) with `utils.ts` for `createZustandMmkvStorage`
+- Navigate to a screen AFTER an awaited auth call in a deep link handler — always call `router.replace()` BEFORE `exchangeCodeForSession` / `setSession`; auth state events (`SIGNED_IN`) fire during the await and trigger nav effects that race ahead of your handler ([details](docs/solutions/runtime-errors/android-deep-link-cold-start-race-condition.md))
+- Gate deep link logic only on `Linking.getInitialURL()` — Android cold-start deep links arrive via `Linking.addEventListener('url')`, not `getInitialURL`; handle both and deduplicate with a handled ref
+- Use `<Plural>` (or `<Select>`, `<SelectOrdinal>`) in Lingui v6 + Expo/Metro — crashes at runtime (`TypeError: Cannot read property 'prototype' of undefined`); use `<Trans>` with a ternary instead: `{count === 1 ? <Trans>1 item</Trans> : <Trans>{count} items</Trans>}` ([details](docs/solutions/runtime-errors/lingui-v6-plural-macro-metro.md))
+- Install `@lingui/macro` in a Lingui v6 project — it max-publishes at v5.9.5 and pulls duplicate v5 core/react packages causing runtime conflicts; use `@lingui/react/macro` (built into v6)
+- Add only the debug/development SHA-1 to Firebase and Google Cloud Console for Google Sign-In — Play App Signing uses a separate certificate; add both the upload key SHA-1 AND the Play App Signing SHA-1 or Google Sign-In returns `DEVELOPER_ERROR` on store builds ([details](docs/solutions/integration-issues/android-auth-store-builds.md))
+- Deploy `assetlinks.json` only to the root domain for Apple Sign-In on Android — it must be at `https://yourdomain.com/.well-known/assetlinks.json` and reachable without redirects; the Chrome Custom Tab won't return to the app otherwise
 
 ## Always do
 
@@ -33,6 +39,7 @@
 - Run `yarn doctor` before triggering any store build — catches duplicate native modules early
 - Wrap user-visible strings: `<Trans>` in JSX, `` t`…` `` for props (import from `@lingui/react/macro`)
 - Keep files under 500 lines
+- Check `docs/solutions/` before implementing auth flows, deep links, or store builds — solved problems are documented there to prevent repeating known mistakes
 
 ## Stack quick-ref
 

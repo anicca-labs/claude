@@ -121,6 +121,8 @@ import { Containers } from '@ksairi-org/ui-containers'
 - Import `Trans, useLingui` from `@lingui/react/macro`
 - Always commit `src/i18n/locales/compiled/*.ts` after running `yarn i18n` — the `pre-build` script reruns compilation; if the committed file differs from what the installed lingui version emits (e.g. lingui 6 adds `/*eslint-disable*/`), every build will produce a dirty tree
 - After upgrading `@lingui/cli`, run `yarn i18n:compile` and commit the result before the next build
+- **Never use `<Plural>`, `<Select>`, or `<SelectOrdinal>` in Lingui v6 + Expo/Metro** — these crash at runtime (`TypeError: Cannot read property 'prototype' of undefined`). Use `<Trans>` with a ternary: `{count === 1 ? <Trans>1 item</Trans> : <Trans>{count} items</Trans>}`. See `docs/solutions/runtime-errors/lingui-v6-plural-macro-metro.md`.
+- **Never install `@lingui/macro` in a v6 project** — it max-publishes at v5.9.5 and pulls duplicate v5 `core`/`react` packages. Use `@lingui/react/macro` which ships with v6.
 
 ### Adding a new locale
 
