@@ -112,20 +112,54 @@ Fix any errors before reporting done.
 
 ## Common pitfalls
 
-### Plurals — use `<Plural>`, not a ternary
+### Plurals — use separate `<Trans>` per form, not `<Plural>`
 
-A JS ternary inside `<Trans>` is not extracted as a translatable plural — it's just a plain string that Lingui never sees:
+**`<Plural>` crashes on Hermes (React Native's JS engine).** The babel plugin compiles it correctly at build time, but `Intl.PluralRules` — which Lingui's ICU plural runtime needs — is unreliable on Hermes. The crash surfaces as `TypeError: Cannot read property 'prototype' of undefined` the first time the plural renders.
+
+Use a ternary with separate `<Trans>` per plural form instead:
 
 ```tsx
-// ❌ 'entry' and 'entries' will never be translated
-<Trans>Today · {count} {count === 1 ? 'entry' : 'entries'}</Trans>
-
-// ✅ Correct — Lingui extracts this as a proper ICU plural message
+// ❌ Crashes on Hermes — Intl.PluralRules not reliable
 import { Trans, Plural } from '@lingui/react/macro'
 <Trans>Today · <Plural value={count} one="# entry" other="# entries" /></Trans>
+
+// ❌ Also wrong — plain interpolation in a ternary isn't extracted as translatable plural
+<Trans>Today · {count} {count === 1 ? 'entry' : 'entries'}</Trans>
+
+// ✅ Correct — each form is a fully translatable Trans message
+import { Trans } from '@lingui/react/macro'
+{count === 1
+  ? <Trans>Today · 1 entry</Trans>
+  : <Trans>Today · {count} entries</Trans>}
 ```
 
-`#` in `<Plural>` is replaced by the value at runtime. Arabic and other languages with complex plural rules get all their forms (`one`, `two`, `few`, `other`) handled automatically.
+Each `<Trans>` call is extracted separately by Lingui. Translators get both forms and can produce correct translations for every locale. For languages with more than two plural forms (Arabic, Russian, etc.), add explicit cases:
+
+```tsx
+{count === 0
+  ? <Trans>No entries</Trans>
+  : count === 1
+  ? <Trans>1 entry</Trans>
+  : <Trans>{count} entries</Trans>}
+```
+
+**If the app needs correct Arabic/Russian pluralization:** install the `@formatjs/intl-pluralrules` polyfill and `<Plural>` will work correctly. Add it to the app entry point (`app/_layout.tsx` or `index.js`) before anything else:
+
+```bash
+yarn add @formatjs/intl-pluralrules
+```
+
+```ts
+// app/_layout.tsx — top of file, before any other imports
+import '@formatjs/intl-pluralrules/polyfill'
+import '@formatjs/intl-pluralrules/locale-data/en'
+import '@formatjs/intl-pluralrules/locale-data/ar'
+// add one import per locale the app supports
+```
+
+Without the polyfill the ternary approach is correct and safe. With the polyfill, `<Plural>` works and handles all plural forms automatically — preferable when supporting languages with 3+ plural forms.
+
+**Also: do not add `@lingui/macro` as a dependency.** It does not exist in Lingui v6 (max published version is 5.9.5). Adding it pulls in duplicate v5 copies of `@lingui/core` and `@lingui/react` alongside v6, causing runtime conflicts. All macros come from `@lingui/react/macro` and `@lingui/core/macro`.
 
 ### `t` must be the Lingui macro — not a function parameter
 
