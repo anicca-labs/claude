@@ -1,63 +1,28 @@
-name: Build and Deploy to App Stores
+name: Store Deploy (reusable)
 
 on:
-  push:
-    branches:
-      - stg
-      - main
-  workflow_dispatch:
+  workflow_call:
     inputs:
       environment:
-        description: 'Environment (stg, prd)'
         required: true
-        type: choice
-        options:
-          - stg
-          - prd
+        type: string
       platform:
-        description: 'Platform (ios, android, all)'
         required: true
-        type: choice
-        options:
-          - ios
-          - android
-          - all
+        type: string
 
 jobs:
-  resolve-config:
-    runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.config.outputs.environment }}
-      platform: ${{ steps.config.outputs.platform }}
-    steps:
-      - id: config
-        run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            if [ "${{ github.ref_name }}" = "main" ]; then
-              echo "environment=prd" >> "$GITHUB_OUTPUT"
-            else
-              echo "environment=stg" >> "$GITHUB_OUTPUT"
-            fi
-            echo "platform=all" >> "$GITHUB_OUTPUT"
-          else
-            echo "environment=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
-            echo "platform=${{ inputs.platform }}" >> "$GITHUB_OUTPUT"
-          fi
-
   deploy-android:
-    needs: resolve-config
-    if: ${{ needs.resolve-config.outputs.platform == 'android' || needs.resolve-config.outputs.platform == 'all' }}
+    if: ${{ inputs.platform == 'android' || inputs.platform == 'all' }}
     uses: ./.github/workflows/expo-android-deploy.yml
     secrets: inherit
     with:
-      environment: ${{ needs.resolve-config.outputs.environment }}
+      environment: ${{ inputs.environment }}
       node-version: '23'
 
   deploy-ios:
-    needs: resolve-config
-    if: ${{ needs.resolve-config.outputs.platform == 'ios' || needs.resolve-config.outputs.platform == 'all' }}
+    if: ${{ inputs.platform == 'ios' || inputs.platform == 'all' }}
     uses: ./.github/workflows/expo-ios-deploy.yml
     secrets: inherit
     with:
-      environment: ${{ needs.resolve-config.outputs.environment }}
+      environment: ${{ inputs.environment }}
       node-version: '23'

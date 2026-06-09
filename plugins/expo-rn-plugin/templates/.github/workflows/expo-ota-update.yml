@@ -1,0 +1,77 @@
+name: Push OTA Update
+
+# Triggers on JS/asset changes only. Native-touching files (package.json,
+# yarn.lock, app.config.ts, eas.json) trigger the store build instead.
+# Manually dispatch to force-push a bundle to a specific channel.
+
+on:
+  push:
+    branches:
+      - stg
+      - main
+    paths:
+      - 'src/**'
+      - 'app/**'
+      - 'assets/**'
+      - 'index.js'
+      - 'lingui.config.ts'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target channel'
+        required: true
+        type: choice
+        options:
+          - stg
+          - prd
+
+jobs:
+  push-ota:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Yarn
+        run: |
+          corepack prepare yarn@4.9.2 --activate
+          yarn --version
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Install Doppler CLI
+        run: curl -Ls https://cli.doppler.com/install.sh | sudo sh
+
+      - name: Resolve environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            ENV="${{ github.ref_name == 'main' && 'prd' || 'stg' }}"
+          else
+            ENV="${{ inputs.environment }}"
+          fi
+          echo "channel=$ENV" >> "$GITHUB_OUTPUT"
+
+      - name: Export JS bundle
+        run: doppler run --project mobile --config ${{ steps.env.outputs.channel }} -- yarn expo export --platform ios --platform android --output-dir dist
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+
+      - name: Push OTA update to Supabase
+        run: |
+          RUNTIME_VERSION=$(node -p "require('./package.json').version")
+          doppler run --project mobile --config ${{ steps.env.outputs.channel }} -- \
+            bash -c "EXPO_UPDATE_CHANNEL=${{ steps.env.outputs.channel }} \
+                     EXPO_RUNTIME_VERSION=$RUNTIME_VERSION \
+                     node scripts/push-ota-update.mjs"
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}

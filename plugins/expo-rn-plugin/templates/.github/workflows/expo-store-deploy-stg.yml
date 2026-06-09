@@ -1,0 +1,65 @@
+name: Build and Deploy to App Stores (stg)
+
+on:
+  push:
+    branches:
+      - stg
+    paths:
+      - 'package.json'
+      - 'yarn.lock'
+      - 'app.config.ts'
+      - 'eas.json'
+      - 'google-services-stg.json'
+      - 'GoogleService-Info-stg.plist'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform'
+        required: true
+        type: choice
+        options:
+          - all
+          - ios
+          - android
+
+jobs:
+  detect-platform:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    outputs:
+      platform: ${{ steps.detect.outputs.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            native:
+              - 'package.json'
+              - 'yarn.lock'
+              - 'app.config.ts'
+              - 'eas.json'
+            android:
+              - 'google-services-stg.json'
+            ios:
+              - 'GoogleService-Info-stg.plist'
+      - id: detect
+        run: |
+          if [[ "${{ steps.changes.outputs.native }}" == "true" ]]; then
+            echo "platform=all" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ steps.changes.outputs.android }}" == "true" && "${{ steps.changes.outputs.ios }}" == "true" ]]; then
+            echo "platform=all" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ steps.changes.outputs.android }}" == "true" ]]; then
+            echo "platform=android" >> "$GITHUB_OUTPUT"
+          else
+            echo "platform=ios" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    needs: [detect-platform]
+    if: ${{ always() && !failure() && !cancelled() }}
+    uses: ./.github/workflows/expo-store-deploy.yml
+    secrets: inherit
+    with:
+      environment: stg
+      platform: ${{ github.event_name == 'push' && needs.detect-platform.outputs.platform || inputs.platform }}
