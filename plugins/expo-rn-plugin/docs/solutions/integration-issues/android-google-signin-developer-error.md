@@ -111,6 +111,8 @@ firebase_create_android_sha(
 
 After adding, re-download `google-services.json` from Firebase — **never manually edit OAuth client IDs**. If a SHA-1 is already listed in Firebase but has no OAuth client, delete and re-add it via the MCP (the Firebase Console UI doesn't always trigger OAuth client creation reliably).
 
+**Critical:** existing Android OAuth clients can silently disappear when you add a new SHA-1 via `firebase_create_android_sha`. Always call `firebase_get_sdk_config` after every SHA-1 operation and verify that **all previously existing** Android OAuth clients are still present. If any are missing, delete and re-add the corresponding SHA-1 to recreate them. Failing to do this causes `DEVELOPER_ERROR` for any build type whose client was dropped.
+
 ## Stale OAuth client IDs
 
 When you **remove a SHA-1 from Firebase**, the corresponding Android OAuth client is deleted from Google Cloud Console. If your `google-services.json` was manually edited and still references that deleted client ID, it will look valid but cause `DEVELOPER_ERROR` at runtime.

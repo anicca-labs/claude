@@ -166,3 +166,59 @@ curl -s -X POST "https://api.supabase.com/v1/projects/{PRD_PROJECT_REF}/database
 ```
 
 **Prevention:** after applying any migration locally or to stg, immediately apply it to prd as well. Consider adding a checklist item to your deploy process: *"Did you run the migration on all Supabase projects?"*
+
+## FCM tokens are tied to the Firebase project — migrate them when switching projects
+
+FCM device tokens are bound to the `GCM_SENDER_ID` (project number) baked into `google-services.json` at build time. When you change `google-services.json` to a different Firebase project, **new builds register tokens with the new sender ID, but existing tokens in the database still carry the old sender ID**.
+
+Sending an FCM message via the new project's credentials to a token registered with the old project produces:
+
+```
+SENDER_ID_MISMATCH (403 PERMISSION_DENIED)
+```
+
+This is silent from the user's perspective — the push simply never arrives.
+
+**Symptoms:**
+- Push notifications work for some devices but not others after a Firebase project migration
+- Devices that installed the app BEFORE the migration fail; devices that installed AFTER succeed
+- `admin-push` reports partial failures with `SenderId mismatch`
+
+**Fix:**
+
+1. Delete stale tokens (registered with the old project) from the database:
+
+```bash
+SUPABASE_TOKEN="your-supabase-access-token"
+# Delete tokens registered before the migration date
+curl -s -X POST "https://api.supabase.com/v1/projects/{PROJECT_REF}/database/query" \
+  -H "Authorization: Bearer $SUPABASE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "DELETE FROM api.device_tokens WHERE updated_at < '\''MIGRATION_DATE'\''"}'
+```
+
+2. Users re-open the app → the new build registers a fresh token with the new Firebase project → push works again.
+
+## Supabase Edge Function Firebase credentials must match the google-services.json project
+
+The `FIREBASE_CLIENT_EMAIL` and `FIREBASE_PRIVATE_KEY` secrets in your Supabase project must be for the **same Firebase project** as the `GCM_SENDER_ID` in `google-services.json`. If they point to different projects, every FCM send fails with `SENDER_ID_MISMATCH`.
+
+This is easy to miss when:
+- You migrate stg from a shared Firebase project to a dedicated one but forget to update the Supabase Edge Function secrets
+- You have per-environment routing (`FIREBASE_PROJECT_ID_STG`) and the env var is unset or wrong, causing all tokens to fall through to the wrong default credentials
+
+**Fix:** update the Supabase secrets via the Management API to match the Firebase project in use:
+
+```bash
+SUPABASE_TOKEN="your-supabase-access-token"
+curl -s -X POST "https://api.supabase.com/v1/projects/{PROJECT_REF}/secrets" \
+  -H "Authorization: Bearer $SUPABASE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"name": "FIREBASE_CLIENT_EMAIL", "value": "firebase-adminsdk-xxx@your-project.iam.gserviceaccount.com"},
+    {"name": "FIREBASE_PRIVATE_KEY", "value": "-----BEGIN PRIVATE KEY-----\n..."},
+    {"name": "FIREBASE_PROJECT_ID", "value": "your-firebase-project-id"}
+  ]'
+```
+
+**Quick verification** — call `send-test-push` directly with a known FCM token. If it returns `ok` the credentials are correct; if it returns `SenderId mismatch` the credentials don't match the token's registration project.
