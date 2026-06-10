@@ -143,6 +143,45 @@ curl -s -X PATCH "https://api.supabase.com/v1/projects/{PROJECT_REF}/config/auth
 
 The `external_google_skip_nonce_check` should be `true` for native mobile Sign-In flows.
 
+## Safe SHA-1 management protocol
+
+Every time you add or remove a SHA-1 via `firebase_create_android_sha`, Firebase may silently drop other OAuth clients. This has caused repeated `DEVELOPER_ERROR` regressions. Follow this protocol without exception:
+
+1. **Before** any SHA-1 operation: run `firebase_get_sdk_config` and record every `client_id` currently present
+2. **Add** the new SHA-1
+3. **After**: run `firebase_get_sdk_config` again and compare — if any previously-existing `client_id` is now missing, delete and re-add the corresponding SHA-1 to recreate it
+4. **Re-download** `google-services.json` and `GoogleService-Info.plist` from Firebase — never edit client IDs by hand
+5. **Update `ANDROID_CLIENT_ID`** in `GoogleService-Info-{env}.plist` to match the play store signing key OAuth client (type=1 for `09:56:68...` or `2b:6b:80...`)
+6. **Commit and push** — CI will trigger a new store build automatically
+
+Never skip step 3. The silent client drop has happened every single time a SHA-1 was re-registered in this project.
+
+## Full audit checklist — run after any Firebase credential change
+
+Use this to verify nothing is broken across all environments and platforms:
+
+**Android OAuth clients (google-services-{env}.json)**
+- [ ] Every SHA-1 registered in Firebase has a matching type=1 `client_id` in the JSON
+- [ ] `ANDROID_CLIENT_ID` in `GoogleService-Info-{env}.plist` matches the play store signing key OAuth client
+- [ ] No stale `client_id`s in the JSON (cross-check with `firebase_get_sdk_config`)
+
+**iOS Google Sign-In (GoogleService-Info-{env}.plist)**
+- [ ] `CLIENT_ID` is the iOS type=2 OAuth client for this Firebase project
+- [ ] `REVERSED_CLIENT_ID` is the reverse of `CLIENT_ID`
+- [ ] `GCM_SENDER_ID` matches the Firebase project number
+
+**Supabase auth (per environment)**
+- [ ] `external_google_client_id` = web client (type=3) for **this environment's** Firebase project, not the other one
+- [ ] `external_apple_client_id` = `com.reflect.{env}.sign-in,com.reflect.{env}` (not mixed between envs)
+
+**Push notifications**
+- [ ] `FIREBASE_CLIENT_EMAIL` on Supabase Edge Functions matches the Firebase project for that Supabase instance
+- [ ] `FIREBASE_PROJECT_ID` on Supabase Edge Functions matches the Firebase project for that Supabase instance
+- [ ] `firebase_project_id` column exists on `api.device_tokens` table in each Supabase project
+
+**Dev clients**
+- [ ] After any `google-services.json` change, rebuild dev clients — they embed the JSON at build time and will have `DEVELOPER_ERROR` until rebuilt
+
 ## Multi-environment checklist
 
 When setting up separate Firebase projects for stg and prd:
