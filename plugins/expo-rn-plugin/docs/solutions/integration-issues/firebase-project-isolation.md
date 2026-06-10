@@ -145,3 +145,24 @@ Edge Functions query `firebase_project_id` from `device_tokens` and group sends 
 | Upload key (`5d...`) | Signing AAB before uploading to Play Store | Firebase (optional, for direct APK installs only) |
 
 The app signing key is managed by Google Play and never changes. Only the app signing key needs to be in Firebase for production Google Sign-In to work.
+
+## Database migrations must be applied to every Supabase project independently
+
+When you have separate Supabase projects for stg and prd, **there is no automatic sync between them**. Any migration that adds columns used by Edge Functions (e.g. `firebase_project_id` on `device_tokens`) must be manually applied to each project.
+
+If a column used by an Edge Function is missing in prd, push notifications silently fail — the function errors before it can route the FCM message.
+
+**Symptom:** push notifications work on stg but not prd, despite identical Edge Function code.
+
+**Fix:** run the missing migration against the prd project via the Supabase Management API:
+
+```bash
+SUPABASE_TOKEN="your-supabase-access-token"
+
+curl -s -X POST "https://api.supabase.com/v1/projects/{PRD_PROJECT_REF}/database/query" \
+  -H "Authorization: Bearer $SUPABASE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "ALTER TABLE api.device_tokens ADD COLUMN IF NOT EXISTS firebase_project_id TEXT NOT NULL DEFAULT '\''your-prd-firebase-project-id'\''"}'
+```
+
+**Prevention:** after applying any migration locally or to stg, immediately apply it to prd as well. Consider adding a checklist item to your deploy process: *"Did you run the migration on all Supabase projects?"*
