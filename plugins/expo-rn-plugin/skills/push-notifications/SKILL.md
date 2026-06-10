@@ -241,6 +241,21 @@ Run `inspect_push_tokens` — if the table is missing it will emit a ready-to-ru
 
 RLS: owner policy on `user_id = auth.uid()`.
 
+## Admin push test page
+
+`https://reflects.sytes.net/admin/push.html` — served via GitHub Pages from `docs/admin/push.html` on the `main` branch (`/docs` source folder).
+
+If it returns 404, GitHub Pages has been disabled on the repo. Re-enable with:
+
+```bash
+gh api repos/ksairi-org/reflect/pages \
+  --method POST \
+  --field "source[branch]=main" \
+  --field "source[path]=/docs"
+```
+
+The HTTPS cert survives disablement, so it comes back immediately after re-enabling.
+
 ## MCP tools
 
 - `inspect_push_tokens` — shows total token count by platform + recent tokens; emits migration if table missing
