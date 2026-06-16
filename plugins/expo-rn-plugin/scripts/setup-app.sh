@@ -99,6 +99,7 @@ copy_if_missing "$PLUGIN_ROOT/templates/eslint.config.js"                     "$
 copy_if_missing "$PLUGIN_ROOT/templates/metro.config.js"                      "$APP_ROOT/metro.config.js"
 copy_if_missing "$PLUGIN_ROOT/templates/firebase.json"                        "$APP_ROOT/firebase.json"
 copy_if_missing "$PLUGIN_ROOT/templates/.prettierrc"                          "$APP_ROOT/.prettierrc"
+copy_if_missing "$PLUGIN_ROOT/templates/.prettierignore"                      "$APP_ROOT/.prettierignore"
 copy_if_missing "$PLUGIN_ROOT/templates/app.config.ts"                        "$APP_ROOT/app.config.ts"
 for wf in "$PLUGIN_ROOT/templates/.github/workflows/"*.yml; do
   [ -f "$wf" ] && copy_if_missing "$wf" "$APP_ROOT/.github/workflows/$(basename "$wf")"
