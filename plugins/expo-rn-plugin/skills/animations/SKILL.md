@@ -133,6 +133,7 @@ Gating `SplashView` on font load causes a visible flash of the unstyled root vie
 **Testing splash without a dev client:** the dev client loads the JS bundle over Metro (~1s), which amplifies any native overlay flash and is not representative of production. Use embedded-bundle builds to test splash behavior accurately:
 
 Add to `eas.json`:
+
 ```json
 "preview-simulator": {
   "distribution": "internal",
@@ -141,6 +142,7 @@ Add to `eas.json`:
 ```
 
 Add to `package.json` scripts:
+
 ```json
 "build-sim": "yarn pre-build && doppler run ... -- eas build --platform ios --profile preview-simulator --local",
 "build-sim:prd": "ENV=prd yarn build-sim",
@@ -149,6 +151,7 @@ Add to `package.json` scripts:
 ```
 
 After `build-sim` finishes, install on the running simulator:
+
 ```sh
 tar -xf <output.tar.gz>
 xcrun simctl install booted <path-to.app>

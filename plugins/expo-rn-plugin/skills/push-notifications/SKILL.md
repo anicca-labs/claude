@@ -15,12 +15,14 @@ Apply the following push notification standards to all code in this project.
 
 - `yarn expo install expo-notifications expo-device @react-native-firebase/messaging`
 - Add `expo-notifications` to the plugins array in `app.config.ts` with icon + color:
+
   ```ts
   ["expo-notifications", {
     icon: "./assets/images/notification-icon.png",
     enableBackgroundRemoteNotifications: true,
   }]
   ```
+
   Do not set `color` — `react-native-firebase_messaging` already injects `default_notification_color` into the Android manifest, and adding `color` here causes a manifest merger conflict.
   Create `assets/images/notification-icon.png` — white/transparent PNG (Android renders notification icons using alpha channel only; color is ignored). Keeping it separate from `adaptive-icon.png` lets you update it independently.
 - Add `"@firebase-messaging": ["src/services/firebase-messaging/index.ts"]` to `tsconfig.json` paths
@@ -178,6 +180,7 @@ export async function upsertDeviceToken(userId: string): Promise<void> {
 ```
 
 Call `upsertDeviceToken(user.id)` in two places:
+
 1. `useAuthSession` — on `SIGNED_IN` auth state event
 2. Settings screen — immediately after the user grants permission
 

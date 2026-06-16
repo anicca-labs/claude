@@ -64,7 +64,7 @@ onSettled: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
 
 Supabase uses an HTTP API — the `insert` and the subsequent `select` are separate HTTP calls to a connection pool. A `refetch` triggered immediately after an insert can complete before the insert is visible to reads, returning stale data that overwrites the `onSuccess` cache update. The symptom is: new item flashes into view then disappears, only reappearing after a manual refetch (e.g. tab switch).
 
-```
+```text
 onSuccess → setQueryData([newEntry, ...])  ✓ UI updates
 onSettled → invalidateQueries → refetch    ✗ Supabase returns old data → cache reverts
 ```

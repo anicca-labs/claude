@@ -22,30 +22,37 @@ A major SDK bump (e.g. 55 → 56) is a **native upgrade**, not a dependency twea
 ## Known breakage to expect
 
 ### Metro: "Cannot find module '@babel/plugin-transform-computed-properties'"
+
 `@react-native/babel-preset` dynamically `require()`s babel plugins that the upgrade churn can prune from the tree. Add the missing one explicitly as a devDep (`yarn add -D @babel/plugin-transform-computed-properties`). Confirm by grepping the preset's required plugins for resolvability.
 
 ### Metro: "expo-router is no longer compatible with react-navigation" (SDK 56+)
+
 expo-router forbids direct `@react-navigation/*` **value** imports. Migrate:
+
 - `@react-navigation/native` → `expo-router/react-navigation` (ThemeProvider, DefaultTheme, DarkTheme)
 - `@react-navigation/material-top-tabs` → `expo-router/js-top-tabs` (createMaterialTopTabNavigator)
 - `@react-navigation/bottom-tabs` → `expo-router/js-tabs`
 - `@react-navigation/elements` → `expo-router/react-navigation` (PlatformPressable)
 
 Keep precise **types** with a type-only import from the original package (erased at build, doesn't trip the runtime check):
+
 ```ts
 import { createMaterialTopTabNavigator } from 'expo-router/js-top-tabs';
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 ```
 
 ### App crashes at startup: "Property 'MessageQueue' doesn't exist" (+ Expo modules "reading 'get'")
+
 This is a **stale dev client** — the installed native binary is from before the upgrade and doesn't match the new JS bundle. The JS is fine; **rebuild and reinstall the dev client**. Don't debug the JS.
 
 ### Testing deps
+
 - `jest` must be a **direct devDep** (`jest@29` for SDK 56) — jest-expo no longer bundles it.
 - RNTL 14 needs the **`test-renderer@^1.0.0`** peer (replaces `react-test-renderer`).
 - RNTL ≥12.4 auto-includes Jest matchers — remove `setupFilesAfterEnv: ['@testing-library/react-native/extend-expect']` (that path no longer exists).
 
 ### Native lib bumps can break iOS pods
+
 A "stay current" bump (e.g. `react-native-purchases` 10.0.1 → 10.3.x) can pull an iOS pod version CocoaPods can't resolve, failing only the iOS build while Android passes. Pin native libs to a known-good version; don't bump them as part of an SDK upgrade unless required.
 
 ## Reliability rules

@@ -168,6 +168,7 @@ async function handleAction() {
 ```
 
 UI pattern:
+
 - Entries 1 → (limit-3): no mention of limits
 - Entries (limit-2) → (limit-1): muted hint — "N free entries left — upgrade to keep writing"
 - At limit: button label gets `✦` suffix, accent-coloured prompt below button
@@ -178,6 +179,7 @@ UI pattern:
 The RC Test Store simulates the full purchase sheet on simulator and Android emulator with **no StoreKit config file and no `ios/` folder** — the correct approach for managed Expo apps.
 
 **Setup:**
+
 1. RC dashboard → Project Settings → Apps → **Add app → Test Store**
 2. RC dashboard → Project Settings → API Keys → copy the `test_…` key
 3. Add to Doppler stg: `EXPO_PUBLIC_RC_TEST_API_KEY=test_…`
@@ -207,6 +209,7 @@ curl -X POST "https://api.revenuecat.com/v2/projects/{project_id}/packages/{pack
 The `test_` key is platform-agnostic — same key works on iOS simulator and Android emulator.
 
 **Critical: Test Store products MUST have prices set in the RC dashboard.** The v2 API can create the product record and wire entitlements/packages, but the simulated price must be set via the dashboard UI — the API doesn't expose a price endpoint for Test Store products:
+
 - Product Catalog → Products → select the test store product → Pricing → Add currency → USD → set price → Save
 - Without a price, `/rcbilling/v1/subscribers/.../products` returns `{"product_details":[]}` and the RC SDK throws "None of the products could be fetched from App Store Connect" even though the test key is used, `__DEV__=true`, and all API calls return 200. The error message is misleading — it's not an App Store Connect issue, it's missing prices.
 - Devices that already cached a successful offerings response (304 Not Modified) will continue working even after prices are removed, masking the issue for existing installs but breaking all fresh installs.
@@ -216,6 +219,7 @@ The `test_` key is platform-agnostic — same key works on iOS simulator and And
 **Offerings must be published** (not draft) before the SDK will serve them. Changing from draft → published in the RC dashboard is required after any configuration change.
 
 **Granting entitlements for testing:**
+
 - Sign in on device/simulator (RC must be initialized and `logIn` called)
 - RC dashboard → Customers → search by Supabase user ID → Grant entitlement → `pro`
 - Test store customers may take a few minutes to appear in the dashboard
@@ -235,6 +239,7 @@ You can stay signed into the app with your real account and still use a sandbox 
 The sandbox account intercepts only the payment sheet. Your app session is unaffected.
 
 **Sandbox behavior differences from production:**
+
 - Subscriptions renew every few minutes (1 month = ~5 min, 1 year = ~1 hr)
 - No real charges — all transactions are free
 - RC dashboard shows sandbox transactions separately under the customer
@@ -307,9 +312,11 @@ function alert({ title, message, preset = 'heart', duration = 6 }: AlertOptions)
    Attempting to reuse the same ID in a second app will be rejected by App Store Connect. Google Play does not have this constraint — IDs are scoped per app.
 3. In App Store Connect, the product status must be **Ready to Submit** before it appears in RevenueCat's import flow. **Your first subscription must be submitted alongside a new app binary** — attach it to the version in the "In-App Purchases and Subscriptions" section before submitting to App Review. Once that first submission is approved, additional subscriptions can be submitted independently from the Subscriptions section without a new binary.
 4. In Google Play, the BILLING permission must be in an uploaded `.aab` before products can be configured. Add to `app.config.ts` if not auto-included:
+
    ```ts
    android: { permissions: ['com.android.vending.BILLING'] }
    ```
+
 5. Import products into RevenueCat via **Product catalog → Products → Import**.
 
 ## Fixing a wrong store identifier in RC
