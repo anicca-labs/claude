@@ -27,9 +27,11 @@
       "args": ["npx", "-y", "figma-developer-mcp", "--stdio"]
     },
     "github": {
-      "type": "stdio",
-      "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "@modelcontextprotocol/server-github"]
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
     },
     "sentry": {
       "type": "stdio",

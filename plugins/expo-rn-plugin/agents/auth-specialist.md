@@ -1,7 +1,7 @@
 ---
 name: auth-specialist
 description: Handles authentication flows — Google/Apple social sign-in, token lifecycle, secure storage, and protected routing. Use when implementing login, onboarding, session refresh, or debugging auth failures.
-model: sonnet
+model: opus
 effort: medium
 maxTurns: 20
 ---

@@ -57,7 +57,7 @@ Add an account information display for the currently logged-in user.
 ## Where to place the card
 
 | Scenario | Placement |
-|---|---|
+| --- | --- |
 | Settings screen exists | Top of scroll content, above Subscription card |
 | Dedicated Profile tab | Center of screen as the hero block |
 | No settings / profile screen | Ask the user which tab to add it to |
@@ -67,7 +67,7 @@ Add an account information display for the currently logged-in user.
 `user_metadata` is populated by the OAuth provider at sign-in:
 
 | Field | Google | Apple | Email/Password |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `full_name` | ✓ | ✓ (first sign-in only) | — |
 | `name` | ✓ | — | — |
 | `avatar_url` | ✓ | — | — |

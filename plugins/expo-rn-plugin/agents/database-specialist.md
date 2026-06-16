@@ -1,7 +1,7 @@
 ---
 name: database-specialist
 description: Handles database work — queries, migrations, RLS policies, schema changes, and typed query generation. Use when writing complex queries, generating or reviewing migrations, debugging RLS, or introspecting the schema.
-model: sonnet
+model: opus
 effort: medium
 maxTurns: 20
 ---

@@ -444,7 +444,7 @@ Note `echo 'y' |` before the `eas build` command — EAS local builds prompt for
 ## Doppler vars (set per environment)
 
 | Var | stg | prd |
-|-----|-----|-----|
+| --- | --- | --- |
 | `EXPO_UPDATE_URL` | `https://<stg-ref>.supabase.co/functions/v1/expo-update-manifest` | `https://<prd-ref>.supabase.co/functions/v1/expo-update-manifest` |
 | `EXPO_UPDATE_CHANNEL` | `stg` | `prd` |
 
@@ -482,7 +482,7 @@ Or just push to `stg`/`main` — the CI workflow fires automatically.
 You need a real binary with no dev server running:
 
 | Platform | Build command | Install |
-|----------|--------------|---------|
+| --- | --- | --- |
 | iOS | `yarn build-ipa` | Install `.ipa` via Xcode / Apple Configurator |
 | Android | `yarn build-apk` | `adb install app-build.apk` or drag onto emulator |
 
@@ -495,7 +495,7 @@ Confirm in Supabase: `api.expo_updates` should have a new active row with correc
 **Android OTA works out of the box. iOS requires all of the following to work:**
 
 | Issue | Symptom | Fix |
-|-------|---------|-----|
+| --- | --- | --- |
 | Missing `assets/` directory | `ERR_UPDATES_FETCH: failed to load all assets` | iOS patch: `createDirectory(withIntermediateDirectories: true)` |
 | NSURLSession ETag caching | `ERR_UPDATES_FETCH` after first successful OTA | iOS patch: 304 retry with stripped conditional headers |
 | Static bundle key `'bundle'` | OTA ID updates but old code runs, no visible changes | Use `platformMeta.bundle` as key (unique per content hash) |

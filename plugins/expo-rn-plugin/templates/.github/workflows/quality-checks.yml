@@ -1,0 +1,56 @@
+name: Quality Checks
+
+# Static quality gates for every PR and for pushes to the long-lived branches.
+# Mirrors the local pre-push hook (tsc + lint + prettier) so drift can't slip
+# through when hooks are bypassed (--no-verify) or not installed.
+# No Doppler/.env needed — these checks run on source only.
+#
+# NOTE: tsc passes without the generated .expo/types (expo-router degrades
+# gracefully), so no type-generation step is required.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - stg
+      - main
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '23'
+          # Corepack (enabled below) manages Yarn 4; disable setup-node's auto
+          # package-manager cache, which otherwise runs the runner's global
+          # Yarn 1 before Corepack is on and fails on the packageManager pin.
+          package-manager-cache: false
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Yarn
+        run: |
+          corepack prepare yarn@4.9.2 --activate
+          yarn --version
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Type-check (tsc)
+        run: yarn check:tsc
+
+      - name: Lint (eslint)
+        run: yarn expo lint
+
+      - name: Format check (prettier)
+        run: yarn format:check

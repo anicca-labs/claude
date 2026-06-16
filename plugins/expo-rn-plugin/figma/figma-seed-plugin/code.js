@@ -1,5 +1,6 @@
-// Figma plugin: seeds design tokens from virtual-wallet as Figma Variables.
-// Run once in development mode, then delete or keep for future re-seeding.
+// Figma plugin: seeds a generic starter set of design tokens as Figma Variables.
+// Run once in development mode on a blank file, then customize the variables to
+// match your brand. Replace the token values below with your own before seeding.
 
 const lightColors = {
   "surface-app": "rgba(255,255,255,1)",
@@ -9,13 +10,6 @@ const lightColors = {
   "surface-invert": "rgba(9,13,18,1)",
   "surface-overlay-ios": "rgba(255,255,255,0.8)",
   "surface-overlay-android": "rgba(255,255,255,0.95)",
-  "surface-skill": "rgba(6,174,155,1)",
-  "surface-application": "rgba(0,111,201,1)",
-  "surface-traits": "rgba(253,245,57,1)",
-  "surface-technical": "rgba(150,144,233,1)",
-  "surface-people": "rgba(127,194,33,1)",
-  "surface-organisation": "rgba(246,133,31,1)",
-  "surface-safety": "rgba(255,209,13,1)",
   "surface-success": "rgba(6,174,114,1)",
   "surface-warning": "rgba(255,209,13,1)",
   "surface-danger": "rgba(207,71,88,1)",
@@ -88,13 +82,6 @@ const darkColors = {
   "surface-invert": "rgba(255,255,255,1)",
   "surface-overlay-ios": "rgba(30,30,30,0.8)",
   "surface-overlay-android": "rgba(18,18,18,0.95)",
-  "surface-skill": "rgba(6,174,155,1)",
-  "surface-application": "rgba(0,111,201,1)",
-  "surface-traits": "rgba(253,245,57,1)",
-  "surface-technical": "rgba(150,144,233,1)",
-  "surface-people": "rgba(127,194,33,1)",
-  "surface-organisation": "rgba(246,133,31,1)",
-  "surface-safety": "rgba(255,209,13,1)",
   "surface-success": "rgba(6,174,114,1)",
   "surface-warning": "rgba(255,209,13,1)",
   "surface-danger": "rgba(207,71,88,1)",

@@ -7,5 +7,7 @@ yarn lingui compile
 git add src/i18n/locales/compiled/ src/i18n/locales/exported/
 git diff --cached --quiet src/i18n/locales/ || git commit -m "chore(i18n): recompile catalogs [generated]" --no-verify
 
+# Quality gates — keep in sync with .github/workflows/quality-checks.yml
 yarn check:tsc
 yarn lint
+yarn format:check
