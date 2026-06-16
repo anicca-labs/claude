@@ -285,7 +285,7 @@ node -e "
   // doppler run injects FIGMA_API_KEY (Doppler key name); the tool expects FIGMA_TOKEN, so remap inline
   // Skip gracefully when vars are unset (Figma integration is optional)
   add('sync-design-tokens',
-    'doppler run --project mobile --config \${ENV:-stg} -- bash -c \'if [ -z "\${FIGMA_API_KEY:-}" ] || [ -z "\${FIGMA_FILE_ID:-}" ]; then echo "Skipping design token sync (no Figma project configured)"; else FIGMA_TOKEN=\$FIGMA_API_KEY figma-tamagui-sync --fileId=\$FIGMA_FILE_ID --out=./src/theme; fi\'');
+    'doppler run --project mobile --config \${ENV:-stg} -- bash -c \'if [ -z \"\${FIGMA_API_KEY:-}\" ] || [ -z \"\${FIGMA_FILE_ID:-}\" ]; then echo \"Skipping design token sync (no Figma project configured)\"; else FIGMA_TOKEN=\$FIGMA_API_KEY figma-tamagui-sync --fileId=\$FIGMA_FILE_ID --out=./src/theme; fi\'');
   add('pre-start', 'yarn sync-env-vars && yarn sync-design-tokens && yarn generate:open-api-hooks');
   add('start:expo',
     '[ \${ENV:-stg} == \\'prd\\' ] && yarn expo start --scheme ' + slug +
@@ -368,7 +368,7 @@ node -e "
   // Migrate ENV var pattern → positional arg pattern (matches virtual-wallet convention)
   const newScripts = {
     'sync-env-vars': 'doppler secrets substitute env.template.yaml --output .env --project mobile --config \$0',
-    'sync-design-tokens': 'doppler run --project mobile --config \$0 -- bash -c \'if [ -z "\${FIGMA_API_KEY:-}" ] || [ -z "\${FIGMA_FILE_ID:-}" ]; then echo "Skipping design token sync (no Figma project configured)"; else FIGMA_TOKEN=\$FIGMA_API_KEY figma-tamagui-sync --fileId=\$FIGMA_FILE_ID --out=./src/theme; fi\'',
+    'sync-design-tokens': 'doppler run --project mobile --config \$0 -- bash -c \'if [ -z \"\${FIGMA_API_KEY:-}\" ] || [ -z \"\${FIGMA_FILE_ID:-}\" ]; then echo \"Skipping design token sync (no Figma project configured)\"; else FIGMA_TOKEN=\$FIGMA_API_KEY figma-tamagui-sync --fileId=\$FIGMA_FILE_ID --out=./src/theme; fi\'',
     'pre-start': 'yarn sync-env-vars \$1 && yarn sync-design-tokens \$1 && yarn generate:open-api-hooks',
     'build': 'yarn sync-env-vars \$1 && yarn generate:open-api-hooks',
     'pre-build': 'yarn i18n && yarn build \$1',
