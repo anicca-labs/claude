@@ -19,6 +19,8 @@ A major SDK bump (e.g. 55 → 56) is a **native upgrade**, not a dependency twea
 6. **Rebuild the dev client** (`dev-client-ios` / `dev-client-android`) AND **compile the bundle** (`expo export`, or start Metro and load on a sim). This is where the real errors surface.
 7. **Boot it on a simulator** and confirm it renders past the splash on both platforms.
 
+> **Register config-providing Expo modules in `plugins[]`.** `expo install --fix` can't edit a dynamic `app.config.ts`, so it may finish with _"Cannot automatically write to dynamic config at: app.config.ts — Add the following to your Expo config"_ followed by a `plugins` array. Add exactly the modules it prints to your `plugins[]`: these are installed Expo modules that ship a config plugin, and listing them applies their native config at prebuild (autolinking handles the native module; config plugins must be listed explicitly). The list is **app-specific** — copy whatever the CLI prints rather than assuming a fixed set (in reflect it was `expo-font`, `expo-image`, `expo-localization`, `expo-status-bar`, `expo-web-browser`).
+
 ## Known breakage to expect
 
 ### Metro: "Cannot find module '@babel/plugin-transform-computed-properties'"
