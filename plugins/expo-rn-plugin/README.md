@@ -78,6 +78,20 @@ With this in place, EAS will automatically:
 - Generate and manage provisioning profiles and certificates
 - No Xcode or manual portal work needed
 
+The key is **team-wide**, so a single upload covers every app and build profile
+(stg, prd, preview, …). It's also what keeps **local and CI builds
+non-interactive**: EAS authenticates to Apple with the key instead of an Apple ID
+session, so you never get a 2FA device-code prompt or a "select a provisioning
+profile" prompt — and unlike a cached Apple session, the key doesn't expire
+monthly. Because the key lives on EAS, both `eas build --local` on your machine
+and the GitHub Actions workflow pick it up automatically via `EXPO_TOKEN` — no
+per-environment Apple secrets required.
+
+> **Fallback:** if you can't use an API key, you can authenticate with an Apple
+> ID + app-specific password (`EXPO_APPLE_ID` / `EXPO_APPLE_APP_SPECIFIC_PASSWORD`),
+> with a device-code prompt on first run. The API key is strongly preferred — the
+> app-specific password path triggers periodic 2FA and is being phased out by Apple.
+
 ### 2. Android — let EAS manage the keystore
 
 On first `eas build --platform android`, EAS generates and stores the keystore automatically. Always run credentials through Doppler so EAS picks up the correct bundle ID:
@@ -205,9 +219,18 @@ The workflow templates (`.github/workflows/`) wire up automatic deploys: push to
 | --- | --- |
 | `EXPO_TOKEN` | expo.dev → Account Settings → Access Tokens |
 | `DOPPLER_TOKEN` | Doppler → project → Access → Service Tokens |
+| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Google Cloud → Service Accounts → JSON key (EAS submit role only) |
+
+iOS Apple auth needs **no secret** when the App Store Connect API key is stored on
+EAS (the recommended setup above) — CI authenticates with the key via `EXPO_TOKEN`.
+
+| Secret (iOS fallback only) | Where to get it |
+| --- | --- |
 | `EXPO_APPLE_ID` | Your Apple ID email |
 | `EXPO_APPLE_APP_SPECIFIC_PASSWORD` | [appleid.apple.com](https://appleid.apple.com) → App-Specific Passwords |
-| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Google Cloud → Service Accounts → JSON key (EAS submit role only) |
+
+> Only add the two fallback secrets (and uncomment them in
+> `expo-ios-deploy.yml`) if you are **not** using an ASC API key on EAS.
 
 > Org-level secrets need **explicit repo access** — go to org Settings → Secrets → grant the repo. A secret set at org level is not automatically inherited by private repos.
 

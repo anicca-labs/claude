@@ -107,7 +107,16 @@ jobs:
           ENV: ${{ inputs.environment }}
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          # Required for non-interactive Apple auth in CI.
-          # Generate an app-specific password at appleid.apple.com.
-          EXPO_APPLE_ID: ${{ secrets.EXPO_APPLE_ID }}
-          EXPO_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.EXPO_APPLE_APP_SPECIFIC_PASSWORD }}
+          # Apple auth — recommended: an App Store Connect API key stored on EAS.
+          # Set it up once with `eas credentials --platform ios` and EAS uses it
+          # automatically here (fetched non-interactively via EXPO_TOKEN). No Apple
+          # ID, no app-specific password, no 2FA device code. The key is team-wide,
+          # so a single upload covers every app/profile and doesn't expire monthly
+          # like a cached Apple ID session.
+          #
+          # Fallback only — if you have NOT uploaded an ASC API key to EAS,
+          # uncomment these to authenticate with an Apple ID + app-specific
+          # password (a device-code prompt may appear on first run). Generate the
+          # password at appleid.apple.com. Prefer the API key above.
+          # EXPO_APPLE_ID: ${{ secrets.EXPO_APPLE_ID }}
+          # EXPO_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.EXPO_APPLE_APP_SPECIFIC_PASSWORD }}
