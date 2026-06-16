@@ -68,10 +68,18 @@ Prettier owns formatting — never hand-adjust quotes, semicolons, or wrapping. 
 
 - Follow React best practices (hooks, memoization, clean component structure)
 - Never use `eslint-disable-next-line react-hooks/exhaustive-deps` — fix the dependency issue
-- **React Compiler exception** (`reactCompiler: true`): the rules `react-hooks/immutability` and `react-hooks/set-state-in-effect` fire false positives on Reanimated `.value` mutations (shared values are stable refs mutated outside React's data flow) and on legitimate one-time-init / command-signal effects. There's no clean fix — use a justified `// eslint-disable-next-line <rule>` with a comment explaining why. This exception is **only** for those two rules; `exhaustive-deps` must still never be disabled
+- **React Compiler is on** (`reactCompiler: true`) — write straightforward code and let it memoize. See the **React Compiler** section below before adding manual `useRef`/`useCallback` memoization or disabling a `react-hooks` rule
 - Keep files under **500 lines** — split into sub-components, hooks, or utils proactively
 - Conditional rendering: use ternary (`condition ? <X /> : null`), not `&&` — the `&&` form renders `0` when condition is a falsy number
 - No margin on custom components — margins create invisible coupling between sibling layout. Use `gap` on the parent `YStack`/`XStack`, or `padding` on a container instead
+
+### React Compiler (`reactCompiler: true`)
+
+The compiler auto-memoizes — prefer plain, direct code and let it optimize:
+
+- **Drop manual memoization for closures.** Don't mirror state into `useRef` or wrap callbacks in `useCallback` just to keep them stable or to read the latest value — the compiler memoizes the closure and it always sees current state. Write a plain function.
+- **No `forwardRef` (React 19).** Pass `ref` as an ordinary prop: `({ ref, ...props }: Props & { ref?: Ref<Handle> })`, and drop the `displayName` boilerplate.
+- **Prefer a clean fix over disabling a rule.** When `react-hooks/immutability` flags a ref mutated during render, move the mutation into a `useEffect` keyed on its dependency. Only when there is genuinely no clean fix — Reanimated `.value` writes (stable shared refs mutated outside React's data flow), or one-time-init / command-signal effects — use a justified `// eslint-disable-next-line react-hooks/immutability` (or `react-hooks/set-state-in-effect`) with a comment explaining why. `exhaustive-deps` is still never disabled.
 
 ### UI component import priority
 
