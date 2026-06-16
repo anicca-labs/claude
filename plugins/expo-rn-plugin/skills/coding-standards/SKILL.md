@@ -55,11 +55,20 @@ Prettier owns formatting — never hand-adjust quotes, semicolons, or wrapping. 
 - **Single quotes** — `'foo'`, never `"foo"` (`singleQuote: true`). Prettier still emits double quotes inside JSX attributes; that is expected, leave it.
 - **Always semicolons** — terminate every statement (`semi: true`).
 - Trailing commas everywhere (`trailingComma: "all"`), 2-space indent (`tabWidth: 2`), 100-char width (`printWidth: 100`).
+- Ship a `.prettierignore` — exclude generated Lingui catalogs (`src/i18n/locales/compiled/`, `src/i18n/locales/exported/`), the Doppler `env.template.yaml` (its `{{ .VAR }}` syntax is invalid YAML), and `dist/`. Without it, `prettier --check` fails on files it cannot (or should not) format.
+- Formatting must be **gated**, not just configured. `format:check` (`prettier --check .`) runs in the pre-push hook next to `check:tsc` and `lint`, and again in the `quality-checks` CI workflow. A `.prettierrc` with no gate is exactly how a repo drifts from its own config.
+
+## CI / GitHub Actions
+
+- Run a **quality-gate workflow** (`quality-checks.yml`) on every PR and on pushes to long-lived branches (`stg`, `main`): `check:tsc` + `lint` + `format:check`, on source only (no Doppler/.env). It mirrors the pre-push hook so drift cannot slip through when hooks are bypassed (`--no-verify`) or uninstalled.
+- **Corepack / Yarn-4 + `setup-node` trap:** `actions/setup-node@v5` defaults `package-manager-cache: true`, which runs `yarn cache dir` using the runner's **global Yarn 1.x before `corepack enable`**. Because `package.json` pins `yarn@4.x` via `packageManager`, global Yarn 1 refuses and the step **fails**. Every `setup-node` step in a Corepack/Yarn-4 project must set `package-manager-cache: false`.
+- When major-bumping a GitHub Action (or the Expo SDK), check the changed **defaults**, not just the inputs you pass — and verify with a real CI/build run before trusting it.
 
 ## React / Components
 
 - Follow React best practices (hooks, memoization, clean component structure)
 - Never use `eslint-disable-next-line react-hooks/exhaustive-deps` — fix the dependency issue
+- **React Compiler exception** (`reactCompiler: true`): the rules `react-hooks/immutability` and `react-hooks/set-state-in-effect` fire false positives on Reanimated `.value` mutations (shared values are stable refs mutated outside React's data flow) and on legitimate one-time-init / command-signal effects. There's no clean fix — use a justified `// eslint-disable-next-line <rule>` with a comment explaining why. This exception is **only** for those two rules; `exhaustive-deps` must still never be disabled
 - Keep files under **500 lines** — split into sub-components, hooks, or utils proactively
 - Conditional rendering: use ternary (`condition ? <X /> : null`), not `&&` — the `&&` form renders `0` when condition is a falsy number
 - No margin on custom components — margins create invisible coupling between sibling layout. Use `gap` on the parent `YStack`/`XStack`, or `padding` on a container instead
@@ -231,13 +240,26 @@ const store = useUserStore();
 
 ## Tab Navigation Setup
 
-Every app with a tab navigator must install `react-native-pager-view` and `@react-navigation/material-top-tabs` **before the first native build**:
+Every app with a tab navigator must install `react-native-pager-view` and `@react-navigation/material-top-tabs` **before the first native build** (the pager and the precise types still come from these packages):
 
 ```bash
 yarn expo install react-native-pager-view @react-navigation/material-top-tabs
 ```
 
-Use `withLayoutContext(createMaterialTopTabNavigator().Navigator)` in `app/(tabs)/_layout.tsx` for animated carousel swipe between tabs. Installing after the first build requires a full EAS rebuild — do it upfront.
+**SDK 56+: never import `@react-navigation/*` values directly** — expo-router forbids it and Metro throws at bundle time. Import the navigator value from expo-router's re-export and keep precise types via a **type-only** import (erased at build, so it doesn't trip the runtime check):
+
+```ts
+import { createMaterialTopTabNavigator } from 'expo-router/js-top-tabs';
+import { withLayoutContext } from 'expo-router';
+import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
+
+const { Navigator } = createMaterialTopTabNavigator();
+const MaterialTopTabs = withLayoutContext(Navigator);
+```
+
+Full re-export mapping: `@react-navigation/native` → `expo-router/react-navigation` (ThemeProvider, DefaultTheme, DarkTheme); `@react-navigation/bottom-tabs` → `expo-router/js-tabs`; `@react-navigation/elements` → `expo-router/react-navigation` (PlatformPressable).
+
+Use `MaterialTopTabs` in `app/(tabs)/_layout.tsx` for animated carousel swipe between tabs. Installing after the first build requires a full EAS rebuild — do it upfront.
 
 ## Resetting UI state on tab blur
 
@@ -246,16 +268,18 @@ Any open or expanded UI state — swipeables, accordions, bottom sheets, inline 
 Reset in the `useFocusEffect` cleanup, and use an **instant** reset (not animated) to avoid a visible flash during the pager's return transition:
 
 ```tsx
+import { useCallback, useEffect, useState } from 'react'
+
 const [closeKey, setCloseKey] = useState(0)
 
 useFocusEffect(
-  React.useCallback(() => {
+  useCallback(() => {
     return () => setCloseKey(k => k + 1) // fires on blur, not on focus
   }, [])
 )
 
 // In the child component:
-React.useEffect(() => {
+useEffect(() => {
   if (closeKey > 0) ref.current?.reset() // reset(), not close() — instant, no animation
 }, [closeKey])
 ```
