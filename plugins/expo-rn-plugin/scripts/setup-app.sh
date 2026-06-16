@@ -314,14 +314,11 @@ node -e "
   add('deploy-store-ios',
     'yarn build-store-ios && doppler run --project mobile --config \${ENV:-stg} -- eas submit --platform ios --profile \${ENV:-stg} --path \$(ls -t store-build-\${ENV:-stg}-*.ipa | head -1)');
   add('deploy-store-ios:prd', 'ENV=prd yarn deploy-store-ios');
-  add('deploy-store-ios:prd-internal', 'yarn build-store-ios:prd && doppler run --project mobile --config prd -- eas submit --platform ios --profile prd-internal --path \$(ls -t store-build-prd-*.ipa | head -1)');
   add('deploy-store-android',
     'yarn build-store-android && doppler run --project mobile --config \${ENV:-stg} -- eas submit --platform android --profile \${ENV:-stg} --path \$(ls -t store-build-\${ENV:-stg}-*.aab | head -1)');
   add('deploy-store-android:prd', 'ENV=prd yarn deploy-store-android');
-  add('deploy-store-android:prd-internal', 'yarn build-store-android:prd && doppler run --project mobile --config prd -- eas submit --platform android --profile prd-internal --path \$(ls -t store-build-prd-*.aab | head -1)');
   add('deploy-store-all', 'yarn deploy-store-android && yarn deploy-store-ios');
   add('deploy-store-all:prd', 'ENV=prd yarn deploy-store-all');
-  add('deploy-store-all:prd-internal', 'yarn deploy-store-android:prd-internal && yarn deploy-store-ios:prd-internal');
   add('generate:open-api-spec',
     "bash -c 'mkdir -p node_modules/@ksairi-org/react-query-sdk/specs && EXPO_PUBLIC_SUPABASE_API_KEY=$(grep ^SUPABASE_SERVICE_ROLE_KEY= .env | cut -d= -f2-) node --env-file=.env node_modules/@ksairi-org/react-query-sdk/scripts/generate-open-api-spec.js'");
   add('generate:open-api-hooks',

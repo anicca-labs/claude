@@ -168,13 +168,14 @@ Set both `REVENUECAT_API_KEY` (iOS `appl_…`) and `REVENUECAT_ANDROID_API_KEY` 
 | `yarn push-ota` / `yarn push-ota:prd` | — | Export JS bundle and push as an OTA update — requires `build-ipa` or `build-apk` binary installed, no dev server running |
 | `yarn build-store-ios` / `yarn build-store-android` | `store-build-stg.{ipa,aab}` | Store build for stg — submits to TestFlight / Play internal track |
 | `yarn build-store-ios:prd` / `yarn build-store-android:prd` | `store-build-prd.{ipa,aab}` | Store build for prd without submitting |
-| `yarn deploy-store-all:prd-internal` | — | **Recommended release flow** — build prd + submit to TestFlight / Play internal testing for final verification with real purchases |
-| `yarn deploy-store-all:prd` | — | Submit directly to App Store / Play Store production (use only after `prd-internal` sign-off) |
+| `yarn deploy-store-all:prd` | — | **Recommended release flow** — build prd + submit to TestFlight / Play internal testing for final verification with real purchases; promote to production from the console |
 
-**Installing iOS simulator builds:** EAS local builds for the simulator are `.tar.gz` archives containing the `.app` bundle. Extract and install with:
+> Every local build appends a `-<timestamp>` to its output filename (e.g. `store-build-stg-20260101-143022.ipa`) so re-running never overwrites a previously working artifact. `deploy-store-*` submits the most recent matching build.
+
+**Installing iOS simulator builds:** EAS local builds for the simulator are `.tar.gz` archives containing the `.app` bundle. Extract and install the latest with:
 
 ```bash
-tar -xf sim-dev-client-stg.tar.gz
+tar -xf "$(ls -t sim-dev-client-stg-*.tar.gz | head -1)"
 xcrun simctl install booted *.app
 rm -rf *.app
 ```
@@ -183,7 +184,7 @@ rm -rf *.app
 
 ```bash
 # 1. Build + submit to internal testing (real purchases, closed testers)
-yarn deploy-store-all:prd-internal
+yarn deploy-store-all:prd
 
 # 2. Testers verify on TestFlight / Play internal track
 
