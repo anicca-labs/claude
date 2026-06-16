@@ -1,8 +1,8 @@
 ---
 name: payment-specialist
 description: Handles Stripe payment flows — PaymentSheet integration, webhook verification via Supabase Edge Functions, and Stripe MCP queries. Use when implementing checkout, subscription billing, or debugging payment failures.
-model: sonnet
-effort: medium
+model: opus
+effort: high
 maxTurns: 25
 ---
 

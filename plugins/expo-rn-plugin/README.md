@@ -235,25 +235,25 @@ MCP servers ship with pre-built `dist/` — no build step required after install
 
 ### Skills (invoke with `/expo-rn-plugin:<name>`)
 
-Skills with a matching project command (e.g. `/form`) can also be invoked via the short form — the command is a thin stub that delegates to the skill. Skills without a project command **must** use the full `/expo-rn-plugin:<name>` prefix.
+All skills are invoked with the full `/expo-rn-plugin:<name>` prefix.
 
-| Skill                    | Project command | Description                                                                                                                                                                    |
-| ------------------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `scaffold <table>`       | `/scaffold`     | Generate full CRUD (types, hooks, screens, routes, form) from a database table                                                                                                 |
-| `form <feature>`         | `/form`         | Generate a zod schema, react-hook-form hook, and Tamagui form component                                                                                                        |
-| `figma <url_or_node_id>` | `/figma`        | Compare screen implementation against Figma design and fix discrepancies                                                                                                       |
-| `sentry`                 | `/sentry`       | Sentry error monitoring — setup, capture patterns, and MCP usage                                                                                                               |
-| `stripe`                 | `/stripe`       | Stripe payments — PaymentSheet flow, PCI rules, and MCP usage                                                                                                                  |
-| `preview`                | `/preview`      | Screenshot the running simulator, check device errors, and run tsc — use after every UI change                                                                                 |
-| `coding-standards`       | —               | Load project coding standards on demand (TypeScript, Tamagui, Zustand, Lingui)                                                                                                 |
-| `analytics`              | —               | Load analytics standards — event naming, screen tracking, user identification, privacy rules (Firebase default; PostHog, Amplitude alternatives)                               |
-| `testing`                | —               | Write or fix component and hook tests using jest-expo and @testing-library/react-native                                                                                        |
-| `animations`             | —               | Animation standards — react-native-reanimated for UI motion, Rive for illustration/splash, rules for when to use each                                                          |
-| `libs`                   | —               | _(optional)_ Full reference for `@ksairi-org/*` libraries fetched live from GitHub. Load before writing any utility, hook, or layout code if your project uses these packages. |
-| `iap`                    | —               | Mobile in-app purchases and subscriptions via RevenueCat — setup, customer identification, product configuration for App Store and Google Play                                 |
-| `feature-flags`          | —               | Feature flags via Firebase Remote Config — naming conventions, per-environment values, gradual rollouts, and reading values in the app                                         |
-| `push-notifications`     | —               | FCM push notifications — setup, token registration, permission flow, daily reminders, and MCP tooling (`inspect_push_tokens`, `send_test_push`)                                |
-| `ota`                    | —               | Self-hosted OTA updates via Supabase — Edge Function manifest server, upload script, CI workflow, Doppler config. No EAS Update subscription needed.                           |
+| Skill                    | Description                                                                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scaffold <table>`       | Generate full CRUD (types, hooks, screens, routes, form) from a database table                                                                                                 |
+| `form <feature>`         | Generate a zod schema, react-hook-form hook, and Tamagui form component                                                                                                        |
+| `figma <url_or_node_id>` | Compare screen implementation against Figma design and fix discrepancies                                                                                                       |
+| `sentry`                 | Sentry error monitoring — setup, capture patterns, and MCP usage                                                                                                               |
+| `stripe`                 | Stripe payments — PaymentSheet flow, PCI rules, and MCP usage                                                                                                                  |
+| `preview`                | Screenshot the running simulator, check device errors, and run tsc — use after every UI change                                                                                 |
+| `coding-standards`       | Load project coding standards on demand (TypeScript, Tamagui, Zustand, Lingui)                                                                                                 |
+| `analytics`              | Load analytics standards — event naming, screen tracking, user identification, privacy rules (Firebase default; PostHog, Amplitude alternatives)                               |
+| `testing`                | Write or fix component and hook tests using jest-expo and @testing-library/react-native                                                                                        |
+| `animations`             | Animation standards — react-native-reanimated for UI motion, Rive for illustration/splash, rules for when to use each                                                          |
+| `libs`                   | _(optional)_ Full reference for `@ksairi-org/*` libraries fetched live from GitHub. Load before writing any utility, hook, or layout code if your project uses these packages. |
+| `iap`                    | Mobile in-app purchases and subscriptions via RevenueCat — setup, customer identification, product configuration for App Store and Google Play                                 |
+| `feature-flags`          | Feature flags via Firebase Remote Config — naming conventions, per-environment values, gradual rollouts, and reading values in the app                                         |
+| `push-notifications`     | FCM push notifications — setup, token registration, permission flow, daily reminders, and MCP tooling (`inspect_push_tokens`, `send_test_push`)                                |
+| `ota`                    | Self-hosted OTA updates via Supabase — Edge Function manifest server, upload script, CI workflow, Doppler config. No EAS Update subscription needed.                           |
 
 ### Project commands (standalone, no skill file)
 
@@ -267,19 +267,22 @@ These commands are copied to `.claude/commands/` by `setup-app.sh` and are avail
 | `/orval`                            | Regenerate OpenAPI hooks from the backend spec              |
 | `/notifications`                    | Set up push notifications (expo-notifications + FCM)        |
 | `/sync-tokens`                      | Pull latest design tokens from Figma mid-session            |
-| `/preview [screen]`                 | Screenshot the running simulator and verify the UI visually |
-
-Skill-backed stubs (thin wrappers — see Skills table above for full docs): `/form`, `/scaffold`, `/figma`, `/sentry`, `/stripe`.
 
 ### Agents (available in `/agents`)
 
-| Agent                 | Model  | Description                                                                  |
-| --------------------- | ------ | ---------------------------------------------------------------------------- |
-| `expo-scaffolder`     | Haiku  | Scaffolding specialist — delegates heavy CRUD generation out of main context |
-| `database-specialist` | Sonnet | DB queries, migrations, RLS policies                                         |
-| `i18n-reviewer`       | Haiku  | Audit Lingui catalogs for missing translations and hardcoded strings         |
-| `auth-specialist`     | Sonnet | Supabase auth flows, Google/Apple sign-in, token lifecycle                   |
-| `payment-specialist`  | Sonnet | Stripe PaymentSheet, PCI compliance, webhooks                                |
+| Agent                 | Model | Description                                                                  |
+| --------------------- | ----- | ---------------------------------------------------------------------------- |
+| `expo-scaffolder`     | Haiku | Scaffolding specialist — delegates heavy CRUD generation out of main context |
+| `database-specialist` | Opus  | DB queries, migrations, RLS policies                                         |
+| `i18n-reviewer`       | Haiku | Audit Lingui catalogs for missing translations and hardcoded strings         |
+| `auth-specialist`     | Opus  | Supabase auth flows, Google/Apple sign-in, token lifecycle                   |
+| `payment-specialist`  | Opus  | Stripe PaymentSheet, PCI compliance, webhooks                                |
+
+Models are declared as **aliases** (`opus` / `haiku`), not pinned snapshots, so agents
+track the latest model automatically. Reasoning-heavy agents (auth, database, payment) run
+on Opus with the `effort` field as the depth/cost dial; mechanical agents (scaffolder,
+i18n) stay on Haiku. Opus fast mode (`/fast`) speeds up the interactive scaffold and Figma
+loops without downgrading the model.
 
 ### MCP Servers
 
@@ -288,23 +291,28 @@ Skill-backed stubs (thin wrappers — see Skills table above for full docs): `/f
 | `expo`     | React Native / Expo tools: config, routes, components, scaffolding, i18n, EAS, push notifications |
 | `database` | DB introspection, query generation, migration generation, RLS inspection                          |
 | `figma`    | Figma design data and asset export                                                                |
-| `github`   | GitHub PR/issue management                                                                        |
+| `github`   | Official GitHub MCP server (remote `api.githubcopilot.com`) — PRs, issues, code search            |
 | `sentry`   | Error monitoring                                                                                  |
 | `stripe`   | Stripe API access                                                                                 |
 | `doppler`  | Secret management                                                                                 |
 | `firebase` | Firebase services                                                                                 |
 | `context7` | Up-to-date library docs (React Native, Expo, etc.)                                                |
 
-All servers that require secrets are wrapped via Doppler (`bin/mcp-run.sh`).
+All stdio servers that require secrets are wrapped via Doppler (`bin/mcp-run.sh`). The
+`github` server is the official remote server and authenticates with a
+`GITHUB_PERSONAL_ACCESS_TOKEN` env var (it replaced the now-archived
+`@modelcontextprotocol/server-github`). `figma` still uses the third-party
+`figma-developer-mcp` because the design-token sync (`figma/sync-figma-tokens.sh`) depends
+on its tool surface — evaluate Figma's official Dev Mode MCP before switching.
 
 ### Hooks (automatic)
 
 | Event                      | Hook                         | Effect                                                                                                |
 | -------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `SessionStart`             | `build-mcp-servers.sh`       | Builds MCP servers if outdated (first run or plugin update)                                           |
 | `SessionStart`             | `figma/sync-figma-tokens.sh` | Syncs Tamagui design tokens from Figma if `FIGMA_FILE_ID` + `FIGMA_API_KEY` are set (no-op otherwise) |
 | `PreToolUse` (Write/Edit)  | `guard-generated-files.sh`   | Blocks edits to auto-generated files (`src/api/generated/`, `src/theme/`) — run the generator instead |
-| `PostToolUse` (Write/Edit) | `tsc-check.sh`               | Runs `tsc --noEmit` after file edits in TypeScript projects                                           |
+| `PostToolUse` (Write/Edit) | `tsc-check.sh`               | Runs `tsc --noEmit` after edits to TypeScript/JS files (skips markdown, JSON, and assets)             |
+| `PreCompact`               | `precompact-state.sh`        | Re-surfaces unapplied Supabase migrations into context so they survive a compaction                   |
 | `Stop`                     | `context-warning.sh`         | Warns when context window ≥ 70% — prompts for `/compact`                                              |
 
 ### Monitors (automatic)
@@ -319,6 +327,18 @@ All servers that require secrets are wrapped via Doppler (`bin/mcp-run.sh`).
 TypeScript Language Server (`typescript-language-server`) — provides go-to-definition, find references, and live diagnostics for `.ts`, `.tsx`, `.js`, `.jsx` files.
 
 `setup-app.sh` installs `typescript-language-server` and `typescript` as devDependencies automatically.
+
+### Design-token tooling (manual, designer-side)
+
+These ship with the plugin but are run by hand outside Claude — they are the human side of the Figma → Tamagui token pipeline, not part of the automated surface above.
+
+| Tool                         | Where it runs    | Purpose                                                                                                  |
+| ---------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------- |
+| `tools/figma-tamagui-sync`   | CLI (auto)       | Pulls Figma variables into `src/theme/`. Driven by the `SessionStart` hook and `yarn sync-design-tokens` |
+| `figma/figma-seed-plugin/`   | Figma app plugin | One-time seed of a blank Figma file with a generic starter token set as Figma Variables                  |
+| `figma/figma-export-plugin/` | Figma app plugin | Designer exports edited Variables back to JSON for the developer to commit                               |
+
+The starter token set in `figma-seed-plugin` is a generic example palette — customize the values to match your brand before seeding a real project.
 
 ## Configuration
 
