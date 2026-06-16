@@ -48,6 +48,14 @@ If a third-party package requires native changes and has no config plugin, check
 - Type/interface names: no `T` or `I` prefix; self-documenting plain English; no abbreviations (except universally known ones like `API`, `URL`)
 - Helper function naming: `get*` / `set*` / `create*` for synchronous; `fetch*` / `post*` / `patch*` / `delete*` for API calls; `is*` / `are*` for type guards and predicates
 
+## Formatting
+
+Prettier owns formatting — never hand-adjust quotes, semicolons, or wrapping. Run format-on-save (or `prettier --write`) and let it win. The project `.prettierrc` enforces:
+
+- **Single quotes** — `'foo'`, never `"foo"` (`singleQuote: true`). Prettier still emits double quotes inside JSX attributes; that is expected, leave it.
+- **Always semicolons** — terminate every statement (`semi: true`).
+- Trailing commas everywhere (`trailingComma: "all"`), 2-space indent (`tabWidth: 2`), 100-char width (`printWidth: 100`).
+
 ## React / Components
 
 - Follow React best practices (hooks, memoization, clean component structure)
