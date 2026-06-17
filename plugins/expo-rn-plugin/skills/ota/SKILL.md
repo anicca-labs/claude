@@ -196,6 +196,70 @@ yarn functions:deploy:prd
 
 Never deploy to just one — production users will get a different manifest behaviour than staging users and bugs will be hard to reproduce.
 
+## VSCode / Deno editor setup (do once per repo)
+
+Edge Functions run on Deno, but VSCode's built-in TypeScript server type-checks them as
+Node/browser code — so it flags the `Deno` global as undefined and can't resolve remote
+imports. Fix it by enabling the Deno LSP **scoped to `supabase/functions`** so it doesn't
+fight the Expo/RN app's TS. This applies to every Edge Function (OTA, push, Stripe webhooks),
+not just OTA.
+
+Requires the `denoland.vscode-deno` extension. After any of these changes, reload the window
+(Cmd+Shift+P → "Reload Window").
+
+**`.vscode/settings.json`** — enable Deno only under the functions folder:
+
+```json
+{
+  "deno.enable": true,
+  "deno.enablePaths": ["./supabase/functions"]
+}
+```
+
+**`.vscode/extensions.json`** — recommend the extension:
+
+```json
+{ "recommendations": ["denoland.vscode-deno"] }
+```
+
+**`supabase/functions/deno.json`** — marks the folder as a Deno project and holds the import
+map. Deno-lint's `no-import-prefix` rejects inline `https:` / `npm:` / `jsr:` specifiers, so
+declare deps here and import them by **bare specifier**:
+
+```json
+{
+  "compilerOptions": { "lib": ["deno.window", "dom"] },
+  "imports": {
+    "jose": "https://esm.sh/jose@5",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+  }
+}
+```
+
+```ts
+import * as jose from 'jose'                          // ✅ bare specifier
+import { createClient } from '@supabase/supabase-js'  // ✅
+// import * as jose from 'https://esm.sh/jose@5'      // ❌ no-import-prefix
+```
+
+**`eslint.config.js`** — exclude the functions from the app's ESLint (it can't resolve Deno
+imports and would report `import/no-unresolved`):
+
+```js
+{ ignores: [/* ...existing... */, "supabase/functions/**"] }
+```
+
+**Cache remote deps** — new imports show an "uncached" error until downloaded. Run from
+`supabase/functions/`, or use the editor's "Cache Dependencies" quick-fix (Cmd+.):
+
+```bash
+deno cache _shared/firebase.ts   # or: deno cache <file>
+deno check _shared/firebase.ts   # verify it type-checks clean
+```
+
+Commit `supabase/functions/deno.json` **and** the generated `deno.lock` — the lock pins exact
+resolved versions for reproducible deploys.
+
 ## Upload script (`scripts/push-ota-update.mjs`)
 
 **Two critical requirements discovered through iOS debugging:**

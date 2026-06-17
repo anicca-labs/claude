@@ -259,6 +259,13 @@ gh api repos/ksairi-org/reflect/pages \
 
 The HTTPS cert survives disablement, so it comes back immediately after re-enabling.
 
+## Editor setup for the Edge Functions
+
+The FCM-sending functions are Deno code. If VSCode flags the `Deno` global or remote imports
+as errors in `supabase/functions/`, set up the Deno LSP scoped to that folder — see the
+**VSCode / Deno editor setup** section in the `ota` skill. It's a one-time per-repo config
+that covers all Edge Functions.
+
 ## Edge Function secrets live in Supabase, not Doppler
 
 The FCM-sending Edge Functions (`send-reminders`, `send-test-push`, `admin-push`) read their creds at runtime via `Deno.env.get(...)` — from **Supabase's own function-secret store**, NOT from Doppler. `doppler run --config <env> -- supabase functions deploy` uses Doppler only to authenticate the deploy; it does **not** upload function secrets. So Doppler and the live Supabase secrets can silently drift (e.g. stg has `FIREBASE_CLIENT_EMAIL`/`FIREBASE_PRIVATE_KEY`, prd is missing them, yet prod push still works because the secrets were set directly on the Supabase project).
