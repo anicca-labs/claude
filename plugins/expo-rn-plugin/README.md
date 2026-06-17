@@ -528,3 +528,11 @@ claude plugin validate
 2. Follow the structure of `mcps/expo-mcp-server/` (`src/index.ts`, `src/tools/`, `package.json`, `tsconfig.json`)
 3. Add an entry to `.mcp.json` using `${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh` as the command
 4. Add `build_server "my-mcp-server"` to `scripts/build-mcp-servers.sh` — the script hardcodes server names, it does not auto-discover new ones
+
+## Releases / versioning
+
+The version is **bumped automatically by CI** — any push to `main` that touches
+`plugins/expo-rn-plugin/**` patch-bumps `.claude-plugin/plugin.json` and commits
+it back, which is what makes the update available to consumers (`plugin update`).
+Don't hand-edit the version for routine changes; only bump manually for an
+intentional minor/major (CI detects that and skips, so there's no double-bump).
