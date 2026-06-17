@@ -1,6 +1,6 @@
 {
   "name": "expo-rn-plugin",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Claude Code plugin for React Native / Expo projects. Provides MCP servers, scaffolding, Figma sync, i18n review, and TypeScript code intelligence. Supports Supabase, Firebase, and REST backends.",
   "author": {
     "name": "Mariano Ksairi",
@@ -25,7 +25,7 @@
     },
     "doppler_config": {
       "title": "Doppler Config",
-      "description": "Doppler config to use (dev / stg / prod, default: dev)",
+      "description": "Doppler config to use (dev / stg / prd, default: dev)",
       "type": "string",
       "sensitive": false
     }

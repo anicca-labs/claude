@@ -372,7 +372,7 @@ The plugin has two optional install-time config keys:
 | Key               | Description                                            |
 | ----------------- | ------------------------------------------------------ |
 | `doppler_project` | Your Doppler project name (e.g. `my-app`)              |
-| `doppler_config`  | Config to use (`dev` / `stg` / `prod`, default: `dev`) |
+| `doppler_config`  | Config to use (`dev` / `stg` / `prd`, default: `dev`) |
 
 You do not need to fill these in manually. `setup-app.sh` runs `doppler setup` interactively and writes both values to `mcp.config.json` automatically. The install-time prompts are a fallback only.
 
