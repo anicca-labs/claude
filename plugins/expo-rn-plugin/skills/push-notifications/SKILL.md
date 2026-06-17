@@ -259,6 +259,23 @@ gh api repos/ksairi-org/reflect/pages \
 
 The HTTPS cert survives disablement, so it comes back immediately after re-enabling.
 
+## Edge Function secrets live in Supabase, not Doppler
+
+The FCM-sending Edge Functions (`send-reminders`, `send-test-push`, `admin-push`) read their creds at runtime via `Deno.env.get(...)` — from **Supabase's own function-secret store**, NOT from Doppler. `doppler run --config <env> -- supabase functions deploy` uses Doppler only to authenticate the deploy; it does **not** upload function secrets. So Doppler and the live Supabase secrets can silently drift (e.g. stg has `FIREBASE_CLIENT_EMAIL`/`FIREBASE_PRIVATE_KEY`, prd is missing them, yet prod push still works because the secrets were set directly on the Supabase project).
+
+If you want Doppler to be the source of truth, add an explicit sync step — a standalone `functions:push-secrets:<env>` script, kept **out of the deploy chain** unless validated (a bad push silently overwrites a working key):
+
+```bash
+# scripts/push-function-secrets.sh <project-ref>  — run via `doppler run --config <env> -- ...`
+# Pushes an allowlist (ADMIN_PUSH_SECRET, FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL,
+# FIREBASE_PRIVATE_KEY, and *_STG variants) via `supabase secrets set --env-file`.
+```
+
+Hard-won rules:
+- **Never push `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`** — Supabase auto-injects these into every function and `supabase secrets set` rejects the `SUPABASE_` prefix.
+- **`FIREBASE_PRIVATE_KEY` is multiline.** Encode it single-line with literal `\n` for env-file safety; the function decodes with `.replace(/\\n/g, '\n')`, so real-newline or `\n`-escaped both work.
+- **Verify safely before/after a push:** `supabase secrets list`'s `DIGEST` is plain `sha256(value)` — compare it to `sha256` of the Doppler value to detect whether a push would actually change anything (no values exposed). Before re-keying a live env, confirm the key still works by minting a Google token (JWT-bearer flow, `firebase.messaging` scope) — a service account can hold several valid keys, so a "different" key may still be valid.
+
 ## MCP tools
 
 - `inspect_push_tokens` — shows total token count by platform + recent tokens; emits migration if table missing
