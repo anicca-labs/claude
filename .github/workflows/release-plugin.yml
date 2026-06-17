@@ -35,6 +35,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+          package-manager-cache: false  # repo pins yarn@4.9.2 via corepack; skip v5 auto-cache
 
       - name: Skip if version was already changed in this push
         id: guard

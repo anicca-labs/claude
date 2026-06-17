@@ -26,6 +26,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+          # v5 defaults this to true and runs `yarn cache dir` before corepack is
+          # enabled below — which fails against the pinned yarn@4.9.2. Disable it.
+          package-manager-cache: false
 
       - name: Setup Yarn Berry
         run: |
