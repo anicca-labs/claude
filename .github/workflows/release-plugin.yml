@@ -1,0 +1,71 @@
+name: Release plugin
+
+# Auto-bumps expo-rn-plugin's version on every change to main, so consumers get
+# the update via `plugin update`. For a Claude Code marketplace the repo IS the
+# registry, so bumping the version on main is the "publish".
+#
+# No manual version edits needed. (You CAN still hand-bump for a minor/major —
+# this job detects that the version already changed and skips, so no double-bump.)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/expo-rn-plugin/**'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-plugin
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    # Belt-and-suspenders: GITHUB_TOKEN pushes don't trigger workflows anyway,
+    # and the release commit carries [skip ci].
+    if: ${{ !contains(github.event.head_commit.message, 'chore(release)') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Skip if version was already changed in this push
+        id: guard
+        run: |
+          PJ=plugins/expo-rn-plugin/.claude-plugin/plugin.json
+          CUR=$(node -pe 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).version' "$PJ")
+          OLD=""
+          BEFORE='${{ github.event.before }}'
+          if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            OLD=$(git show "$BEFORE:$PJ" 2>/dev/null | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).version' 2>/dev/null || echo "")
+          fi
+          if [ -n "$OLD" ] && [ "$OLD" != "$CUR" ]; then
+            echo "Version already changed ($OLD -> $CUR) — skipping auto-bump."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump patch version
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          PJ=plugins/expo-rn-plugin/.claude-plugin/plugin.json
+          NEW=$(node -e 'const fs=require("fs");const p=process.argv[1];let s=fs.readFileSync(p,"utf8");const m=s.match(/"version":\s*"(\d+)\.(\d+)\.(\d+)"/);const v=[+m[1],+m[2],+m[3]+1].join(".");fs.writeFileSync(p,s.replace(/("version":\s*")\d+\.\d+\.\d+(")/,"$1"+v+"$2"));console.log(v);' "$PJ")
+          echo "NEW=$NEW" >> "$GITHUB_ENV"
+          echo "Bumped to $NEW"
+
+      - name: Commit & push
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add plugins/expo-rn-plugin/.claude-plugin/plugin.json
+          git commit --no-verify -m "chore(release): expo-rn-plugin v$NEW [skip ci]"
+          git push
