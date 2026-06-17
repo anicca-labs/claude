@@ -35,6 +35,23 @@ curl -s -A node -H "Authorization: Bearer $KEY" -H "Accept: application/json, te
 
 Plain reads work via REST too: `curl -A node -H "Authorization: Bearer $KEY" https://api.revenuecat.com/v2/projects`.
 
+## Paywall editing (RevenueCat) — gotchas
+
+Hard-won lessons from editing RevenueCat v2 paywalls:
+
+- **The AI paywall editor (`edit-paywall-ai`) can't reliably target individual carousel slides/pages.** It tends to edit a hero/base image layer and silently leave per-page images untouched — and still reports success. For a surgical per-slide change (e.g. swap one slide's image), use a **direct REST `PATCH`** instead (below).
+- **Edits save as an unpublished draft — you must Publish** for them to go live, and the SDK/builder **caches**, so cold-start the app (or hard-refresh the builder) to see changes. "Still wrong after editing" is almost always an unpublished draft or stale cache.
+- **Verify by data, not by the render the editor returns** — fetch the published config and check the actual per-slide image URLs and `components_localizations`.
+- **Custom fonts:** a text component referencing a font **not in the project's custom-font list** blocks publishing (`"…font is not present in the custom font list"`). The list is often empty, so set such text to the default font (drop `font_name`).
+- **Paywall localization is separate from app i18n.** It lives in `components_localizations`, defaults to `en_US` only, and uses RevenueCat's own locale codes — valid examples: `en_US, es_ES, es_419, fr_FR, fr_CA, pt_BR, pt_PT, ar_SA, id, it, ja, de_DE` (a bad code returns 422 listing the accepted set).
+- **`assets.pawwalls.com` image URLs are public** and reusable across projects/screenshots; assets are per-project, so the same picture uploaded to stg and prd gets different IDs.
+
+### Direct REST PATCH for a paywall
+
+`PATCH /v2/projects/{id}/paywalls/{pwid}` requires the **full** revision payload: `revision` (current value, for optimistic locking — 409 if stale), `components_config`, `components_localizations`, and `default_locale`. Workflow: GET `…?expand=components`, modify only what you need in the current published config, then PATCH, then Publish.
+
+An image `source.light` must be a **complete** object (`webp` + `heic` + `*_low_res` + `original` + `width` + `height`) or it renders inconsistently across platforms — copy a complete source from a working slide rather than hand-building one. The bearer key is **per-project** (stg and prd each need their own — see "reaching stg vs prd" above).
+
 ## Installation
 
 ```bash
