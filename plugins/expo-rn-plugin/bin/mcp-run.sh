@@ -33,6 +33,10 @@ fi
 
 PROJECT="${CLAUDE_PLUGIN_OPTION_DOPPLER_PROJECT:-}"
 CONFIG="${CLAUDE_PLUGIN_OPTION_DOPPLER_CONFIG:-}"
+# An explicit config override must win over the value read from mcp.config.json
+# below. This lets a dedicated "*-prd" MCP server target the prod Doppler config
+# while still inheriting the app's project from mcp.config.json.
+CONFIG_OVERRIDE="${CLAUDE_PLUGIN_OPTION_DOPPLER_CONFIG:-}"
 
 # Walk up from $PWD to find the nearest mcp.config.json — Claude may start MCP
 # processes with a CWD that differs from the project root.
@@ -55,6 +59,10 @@ if [ -z "$PROJECT" ]; then
 fi
 
 CONFIG="${CONFIG:-dev}"
+
+# Re-apply a per-server config override (e.g. a "*-prd" server) so it wins over
+# whatever mcp.config.json specified, while keeping that file's Doppler project.
+[ -n "$CONFIG_OVERRIDE" ] && CONFIG="$CONFIG_OVERRIDE"
 
 # Last-resort fallback: ask the Doppler CLI for the project/config scoped to $PWD.
 # This kicks in when mcp.config.json has no doppler block but the user has already

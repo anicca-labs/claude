@@ -16,6 +16,25 @@ Never try to handle App Store or Google Play billing through Stripe — Apple an
 
 A single RevenueCat project contains one app per platform × environment (typically 6 apps: iOS × {qa, stg, prd} + Android × {qa, stg, prd}). All apps in a project share entitlements, offerings, and webhook config.
 
+Some setups instead use **separate RevenueCat projects per environment** (e.g. "<app> stg" and "<app> prd"), each with its own bundle id and its own `RC_MCP_API_KEY` (v2 secret keys are project-scoped). When stg and prd hold different keys, a single MCP server can only reach one project.
+
+## RevenueCat MCP — reaching stg vs prd
+
+Every MCP launches via `bin/mcp-run.sh`, which runs `doppler run -c <config>` where `<config>` comes from the app's `mcp.config.json` (`doppler.config`, usually `stg`). So the **`revenuecat`** MCP server boots with the stg/default `RC_MCP_API_KEY` and **403s on the prod project** ("API key does not belong to project").
+
+This plugin also ships a **`revenuecat-prd`** server that forces `CLAUDE_PLUGIN_OPTION_DOPPLER_CONFIG=prd` (mcp-run.sh re-applies this override after reading `mcp.config.json`, so it keeps the app's Doppler project but switches to the prd config/key). Use the `revenuecat-prd__*` tools for production paywalls/products; restart MCP servers once after a fresh checkout so it appears.
+
+If a restart isn't possible, drive the RC MCP over HTTP directly with the prd key (stateless JSON-RPC, but Cloudflare bans the default urllib UA — send `User-Agent: node`):
+
+```bash
+KEY=$(doppler secrets get RC_MCP_API_KEY -p <project> -c prd --plain)
+curl -s -A node -H "Authorization: Bearer $KEY" -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" -X POST https://mcp.revenuecat.ai/mcp \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"edit-paywall-ai","arguments":{...}}}'
+```
+
+Plain reads work via REST too: `curl -A node -H "Authorization: Bearer $KEY" https://api.revenuecat.com/v2/projects`.
+
 ## Installation
 
 ```bash
