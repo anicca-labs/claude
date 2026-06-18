@@ -35,6 +35,23 @@ All native configuration goes through config plugins in `app.config.ts`:
 
 If a third-party package requires native changes and has no config plugin, check whether an Expo-maintained fork or wrapper exists before reaching for bare workflow.
 
+## Package Installation
+
+**Always install Expo SDK packages with `yarn expo install`, never `yarn add`.**
+
+```bash
+# Correct
+yarn expo install expo-speech-recognition
+yarn expo install react-native-pager-view @react-navigation/material-top-tabs
+
+# Wrong — will resolve the latest npm version, which may be incompatible with the current Expo SDK
+yarn add expo-speech-recognition
+```
+
+`yarn expo install` resolves the version compatible with the project's current Expo SDK (`expo` version in `package.json`). Using `yarn add` fetches the latest npm version, which may target a different SDK. The mismatch produces native module crashes at runtime (e.g. `Cannot find native module 'ExpoSpeechRecognition'`) that survive multiple clean rebuilds — because the native binary is baked at build time, the only recovery is `yarn expo install` + a fresh dev client build.
+
+This rule applies to any package in the Expo ecosystem: `expo-*`, `react-native-*` packages listed in the Expo SDK, and any package that ships a native module bundled with Expo.
+
 ## TypeScript
 
 - Never use `any` — use proper types, generics, or type guards
