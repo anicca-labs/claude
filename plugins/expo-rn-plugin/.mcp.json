@@ -16,6 +16,11 @@
         "NODE_PATH": "${CLAUDE_PLUGIN_ROOT}/mcps/database-mcp-server/node_modules"
       }
     },
+    "supabase": {
+      "type": "stdio",
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
+      "args": ["npx", "-y", "@supabase/mcp-server-supabase@latest", "--access-token=${SUPABASE_ACCESS_TOKEN}"]
+    },
     "figma": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
@@ -36,7 +41,7 @@
     "stripe": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "@stripe/mcp", "--tools=all"]
+      "args": ["npx", "-y", "@stripe/mcp"]
     },
     "doppler": {
       "type": "stdio",
