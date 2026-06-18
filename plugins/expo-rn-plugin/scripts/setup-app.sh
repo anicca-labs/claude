@@ -71,7 +71,6 @@ copy_if_missing() {
   fi
 }
 
-copy_if_missing "$PLUGIN_ROOT/templates/.mcp.json"                        "$APP_ROOT/.mcp.json"
 copy_if_missing "$PLUGIN_ROOT/templates/CLAUDE.md"                        "$APP_ROOT/CLAUDE.md"
 copy_if_missing "$PLUGIN_ROOT/templates/mcp.config.json"                  "$APP_ROOT/mcp.config.json"
 copy_if_missing "$PLUGIN_ROOT/templates/.claude/settings.json"            "$APP_ROOT/.claude/settings.json"
@@ -790,8 +789,8 @@ _firebase_json  "$APP_ROOT/google-services-prod.json"
 # ── 8. Optional service wizard ────────────────────────────────────────────────
 # Ask which optional services the user wants to configure now. For each yes:
 # prompt for credentials and store them in Doppler. All MCP servers are always
-# present in .mcp.json — unconfigured ones show red so the user knows what's
-# pending. Re-run this script any time to fill in more services.
+# provided by the plugin itself — unconfigured ones show red so the user knows
+# what's pending. Re-run this script any time to fill in more services.
 
 _ask() {
   local label="$1" hint="${2:-}"

@@ -39,7 +39,7 @@ claude plugin install expo-rn-plugin --scope project
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/setup-app.sh"
 # When testing from source (CLAUDE_PLUGIN_ROOT not set), run directly:
 #   bash /path/to/expo-rn-plugin/scripts/setup-app.sh
-# → Copies CLAUDE.md, mcp.config.json, .mcp.json, .claude/settings.json, .claude/commands/
+# → Copies CLAUDE.md, mcp.config.json, .claude/settings.json, .claude/commands/
 # → Auto-fills CLAUDE.md with project name from package.json
 # → Detects actual dir structure and writes mcp.config.json
 # → Adds sync-env-vars + sync-design-tokens to package.json; wires prestart
