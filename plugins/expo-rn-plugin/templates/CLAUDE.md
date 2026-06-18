@@ -6,7 +6,7 @@
 - Run `expo prebuild` directly — use `yarn pre-build` (or the relevant package.json script); running prebuild manually leaves a local `android/` or `ios/` folder that shouldn't exist
 - `any`, `as` casts, `eslint-disable` — fix at source
 - Tamagui: no hardcoded colors/dims, no `StyleSheet.create()`, no inline `style={{…}}` — use `$tokens` and `styled()` everywhere; raw `Text` → `@fonts` semantic components (Heading, Body, Label variants); set `disableExtraction: true` in `@tamagui/babel-plugin` (Babel can't resolve TS path aliases → empty extraction cache → "Missing theme" crash in production)
-- `react-native` / `expo-image` primitives when a Tamagui or `@ksairi-org/` equivalent exists — priority: tamagui → `@ksairi-org/` → project-local → `react-native`
+- `react-native` / `expo-image` primitives when a Tamagui or `@ksairi-org/` equivalent exists — priority: tamagui → `@ksairi-org/` → project-local → `react-native`; use `YStack`/`XStack` whenever you need spacing, color, or any design token — use `View` only for structural-only wrappers with no styles (e.g. `onLayout` trackers, ref holders)
 - `FlatList` — use `FlashList` with `estimatedItemSize`
 - `TouchableOpacity` / `Pressable` — use your team's touchable wrapper
 - `GoogleSigninButton` — it ignores text alignment; use a custom `BaseTouchable` + inline SVG Google logo (`react-native-svg`)
