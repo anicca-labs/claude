@@ -4,7 +4,8 @@
   "description": "MCP server exposing database schema introspection, query generation, and migration tools",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "npx -y esbuild@0.28.1 src/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.js",
+    "typecheck": "tsc --noEmit",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js"
   },
