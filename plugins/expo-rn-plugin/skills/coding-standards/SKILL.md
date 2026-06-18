@@ -67,6 +67,23 @@ This rule applies to any package in the Expo ecosystem: `expo-*`, `react-native-
 - Type/interface names: no `T` or `I` prefix; self-documenting plain English; no abbreviations (except universally known ones like `API`, `URL`)
 - Helper function naming: `get*` / `set*` / `create*` for synchronous; `fetch*` / `post*` / `patch*` / `delete*` for API calls; `is*` / `are*` for type guards and predicates
 
+### tsconfig — `baseUrl` deprecation
+
+TypeScript 6.x warns that `baseUrl` is deprecated (removed in 7.0). **Do not remove `baseUrl` to silence it** — Expo's Metro bundler reads `baseUrl` from `tsconfig.json` to resolve the project's path aliases (`@/*`, `@screens`, `@atoms`, …) at runtime. Dropping it can break the bundle even though `tsc` still passes (TS 4.1+ resolves `paths` without `baseUrl`, Metro does not).
+
+Silence the warning by bumping `ignoreDeprecations` to match the version named in the warning:
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0"
+  }
+}
+```
+
+This is a deferral, not a fix. `baseUrl` is fully removed in TS 7.0 — before adopting it, drop `baseUrl`, make every `paths` entry resolve relative to the tsconfig location, and confirm the Expo SDK in use no longer needs `baseUrl` for alias resolution.
+
 ## Formatting
 
 Prettier owns formatting — never hand-adjust quotes, semicolons, or wrapping. Run format-on-save (or `prettier --write`) and let it win. The project `.prettierrc` enforces:
