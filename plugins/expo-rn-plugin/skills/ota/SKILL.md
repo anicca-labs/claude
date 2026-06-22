@@ -11,7 +11,14 @@ OTA updates are self-hosted on Supabase — no EAS Update subscription needed.
 - **Edge Function** (`expo-update-manifest`) — implements Expo Updates Protocol v1, returns multipart manifests
 - **`api.expo_updates` table** — tracks which update is active per channel/platform/runtime version
 - **`scripts/push-ota-update.mjs`** — CI script: runs `expo export`, uploads to Storage, registers in DB
+- **`scripts/prune-ota-updates.mjs`** — retention: deletes superseded updates so Storage stays bounded (called automatically at the end of every push)
 - **GitHub Actions workflow** — triggers on push to `stg`/`main`, auto-pushes the OTA update
+
+> **Storage grows unbounded without retention.** Each push uploads a fresh bundle **plus a full
+> copy of every asset** into a new `{channel}/{updateId}/` folder, but the manifest server only
+> ever serves the *latest* update per platform — everything older is dead weight. Without pruning,
+> a frequently-pushed channel (especially `stg`) balloons to multiple GB and blows past Supabase's
+> free 1 GB Storage cap. The prune step below is not optional; wire it in from day one.
 
 The store build is still required when native code changes. OTA handles JS-only changes.
 
@@ -22,7 +29,7 @@ The store build is still required when native code changes. OTA handles JS-only 
 3. Apply the Supabase migration (table + storage bucket)
 4. Deploy the Edge Function to stg and prd
 5. Set Doppler vars (`EXPO_UPDATE_URL`, `EXPO_UPDATE_CHANNEL`) in stg and prd
-6. Add `scripts/push-ota-update.mjs` and `.github/workflows/expo-ota-update.yml`
+6. Add `scripts/push-ota-update.mjs`, `scripts/prune-ota-updates.mjs`, and `.github/workflows/expo-ota-update.yml`
 7. Apply the iOS native patch (see **iOS native patch** section below)
 8. Add path filters to the store build workflow so it only runs on native-touching files
 9. Do one native rebuild so `expo-updates` is embedded in the binary
@@ -88,7 +95,9 @@ create table api.expo_updates (
 );
 
 alter table api.expo_updates enable row level security;
-grant select, insert, update on api.expo_updates to service_role;
+-- delete is required by the retention prune (scripts/prune-ota-updates.mjs); without it
+-- pruning fails with "permission denied for table expo_updates" and Storage grows unbounded
+grant select, insert, update, delete on api.expo_updates to service_role;
 
 create index expo_updates_lookup_idx
   on api.expo_updates (channel, platform, runtime_version, created_at desc)
@@ -274,6 +283,7 @@ import fs from 'fs'
 import { createRequire } from 'module'
 import path from 'path'
 import crypto from 'crypto'
+import { pruneOtaUpdates } from './prune-ota-updates.mjs'
 
 const require = createRequire(import.meta.url)
 const { getConfig } = require('@expo/config')
@@ -371,6 +381,8 @@ async function main() {
   const { exp: expoConfig } = getConfig(process.cwd(), { skipSDKVersionRequirement: true })
   await pushPlatform('ios', metadata, crypto.randomUUID(), expoConfig)
   await pushPlatform('android', metadata, crypto.randomUUID(), expoConfig)
+  // Bound Storage growth: drop superseded updates right after publishing the new one.
+  await pruneOtaUpdates()
   console.log('\nDone.')
 }
 
@@ -384,6 +396,145 @@ doppler run --project mobile --config stg -- yarn expo export --clear --platform
 ```
 
 The `--clear` flag prevents Metro from serving a cached bundle with stale module IDs.
+
+## Storage retention (`scripts/prune-ota-updates.mjs`)
+
+`push-ota-update.mjs` imports `pruneOtaUpdates` and calls it after each publish, so the
+`expo-updates` bucket self-prunes and can't grow unbounded. It keeps the newest `OTA_RETAIN`
+updates per platform (default **2**, for rollback headroom) and deletes the rest — both the
+Storage objects and the `api.expo_updates` rows.
+
+**Key implementation details (each one is load-bearing):**
+
+- **The `storage` schema is not exposed via PostgREST**, so objects are enumerated with the
+  native Storage list API — which is non-recursive (folders come back with `id === null`),
+  hence the recursive walk.
+- **Delete via the Storage API, not `DELETE FROM storage.objects`** — a raw row delete orphans
+  the underlying bytes in the storage backend; the Storage `remove` endpoint deletes both.
+- **Retries** — the Storage API intermittently returns 504/429 under load; without backoff a
+  long prune aborts partway.
+- **Delete the DB row only after its objects are gone**, one update at a time, so an interrupted
+  run is safely re-runnable (surviving rows still point at whatever objects remain).
+- Run standalone to backfill an existing project that grew before retention existed:
+  `doppler run --project mobile --config stg -- node scripts/prune-ota-updates.mjs`
+  (set `OTA_RETAIN=1` to reclaim the most; orphaned folders from older partial runs — i.e.
+  Storage folders with no matching `expo_updates` row — must be cleaned separately, as this
+  script only walks live DB rows).
+
+```js
+#!/usr/bin/env node
+// Deletes superseded OTA updates so the expo-updates bucket doesn't grow unbounded.
+// The manifest server only serves the latest active update per (channel, platform,
+// runtime_version); everything older is dead weight. Keeps the newest OTA_RETAIN per
+// platform. Imported by push-ota-update.mjs and runnable standalone via Doppler.
+const BUCKET = 'expo-updates'
+
+function requireEnv(name) {
+  const val = process.env[name]
+  if (!val) throw new Error(`Missing required env var: ${name}`)
+  return val
+}
+
+const SUPABASE_URL = requireEnv('SUPABASE_URL')
+const SERVICE_ROLE_KEY = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
+const CHANNEL = requireEnv('EXPO_UPDATE_CHANNEL')
+const RETAIN = Math.max(1, parseInt(process.env.OTA_RETAIN ?? '2', 10))
+
+const authHeaders = (extra = {}) => ({ Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY, ...extra })
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+// The Storage API occasionally returns 504/429 under load; retry transient failures.
+async function fetchRetry(url, opts, tries = 5) {
+  let lastErr
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    try {
+      const res = await fetch(url, opts)
+      if (res.status < 500 && res.status !== 429) return res
+      lastErr = new Error(`${res.status} ${await res.text()}`)
+    } catch (err) { lastErr = err }
+    if (attempt < tries) await sleep(500 * 2 ** (attempt - 1))
+  }
+  throw lastErr
+}
+
+// Update IDs to delete: every update for this channel except the newest RETAIN per platform.
+async function staleUpdateIds() {
+  const res = await fetchRetry(
+    `${SUPABASE_URL}/rest/v1/expo_updates?channel=eq.${CHANNEL}&select=id,platform,created_at&order=created_at.desc`,
+    { headers: authHeaders({ 'Accept-Profile': 'api' }) },
+  )
+  if (!res.ok) throw new Error(`Failed to list updates: ${res.status} ${await res.text()}`)
+  const kept = {}
+  const stale = []
+  for (const row of await res.json()) {
+    const seen = (kept[row.platform] ??= 0)
+    if (seen < RETAIN) kept[row.platform] = seen + 1
+    else stale.push(row.id)
+  }
+  return stale
+}
+
+// Storage list API is non-recursive (folders => id === null), so descend into each.
+async function listObjectsRecursive(prefix) {
+  const out = []
+  const limit = 1000
+  let offset = 0
+  for (;;) {
+    const res = await fetchRetry(`${SUPABASE_URL}/storage/v1/object/list/${BUCKET}`, {
+      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ prefix, limit, offset }),
+    })
+    if (!res.ok) throw new Error(`Failed to list objects: ${res.status} ${await res.text()}`)
+    const items = await res.json()
+    for (const item of items) {
+      const full = prefix ? `${prefix}/${item.name}` : item.name
+      if (item.id === null) out.push(...(await listObjectsRecursive(full)))
+      else out.push(full)
+    }
+    if (items.length < limit) break
+    offset += limit
+  }
+  return out
+}
+
+async function deleteObjects(paths) {
+  // Storage bulk-delete removes the row AND the backing bytes; a raw DELETE on
+  // storage.objects would orphan the file in the storage backend.
+  for (let i = 0; i < paths.length; i += 1000) {
+    const res = await fetchRetry(`${SUPABASE_URL}/storage/v1/object/${BUCKET}`, {
+      method: 'DELETE', headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ prefixes: paths.slice(i, i + 1000) }),
+    })
+    if (!res.ok) throw new Error(`Storage delete failed: ${res.status} ${await res.text()}`)
+  }
+}
+
+async function deleteUpdateRow(updateId) {
+  const res = await fetchRetry(`${SUPABASE_URL}/rest/v1/expo_updates?id=eq.${updateId}`, {
+    method: 'DELETE', headers: authHeaders({ 'Content-Profile': 'api', Prefer: 'return=minimal' }),
+  })
+  if (!res.ok) throw new Error(`DB delete failed: ${res.status} ${await res.text()}`)
+}
+
+export async function pruneOtaUpdates() {
+  const stale = await staleUpdateIds()
+  if (stale.length === 0) { console.log(`OTA prune (${CHANNEL}): nothing to remove (retain=${RETAIN}).`); return }
+  console.log(`OTA prune (${CHANNEL}): removing ${stale.length} update(s), keeping newest ${RETAIN}/platform...`)
+  let objCount = 0
+  for (const id of stale) {
+    const paths = await listObjectsRecursive(`${CHANNEL}/${id}`)
+    if (paths.length) { await deleteObjects(paths); objCount += paths.length }
+    // Delete the row only after its objects are gone, so an interrupted run is re-runnable.
+    await deleteUpdateRow(id)
+  }
+  console.log(`OTA prune (${CHANNEL}): deleted ${objCount} storage object(s) and ${stale.length} DB row(s).`)
+}
+
+// Run directly (not when imported by push-ota-update.mjs).
+if (import.meta.url === `file://${process.argv[1]}`) {
+  pruneOtaUpdates().catch((err) => { console.error(err.message); process.exit(1) })
+}
+```
 
 ## iOS native patch (required)
 
@@ -569,3 +720,4 @@ Confirm in Supabase: `api.expo_updates` should have a new active row with correc
 | `urlCache = nil` on URLSession | All 200 responses deliver nil data | Do NOT set this — use `reloadIgnoringLocalCacheData` per-request instead |
 | Metro cache in OTA export | Bundle has stale code despite source changes | Always use `--clear` flag: `expo export --clear` |
 | EAS local build wipes patches | NSLog/fixes disappear, OTA reverts to broken | Use `yarn patch` to persist patches — committed to `.yarn/patches/` |
+| No Storage retention | `expo-updates` bucket grows to multiple GB, blows the free 1 GB cap | Call `pruneOtaUpdates()` after each push; `grant ... delete ...` to service_role |
