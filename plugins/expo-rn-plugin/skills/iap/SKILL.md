@@ -375,3 +375,12 @@ Use an LLM to break down a PRD into products, subscriptions, offerings, and enti
 
 - Google requires the Google Payments merchant setup to be completed before subscriptions or IAP can be configured in the Play Console.
 - Verify via Play Console: select an app → Subscriptions or In-app products — if it prompts for merchant setup, it hasn't been completed.
+
+## App Store review — subscription & Apple Pay requirements
+
+Auto-renewable subscriptions get scrutinized hard. Lessons from real rejections (all resolved → approved):
+
+- **3.1.2(c) — describe the value.** Each subscription's **Description** in App Store Connect (Monetization → Subscriptions → localization) must clearly state *what the user gets for the price*. The field is short (~50 chars); a benefit list like `Unlimited entries, encrypted sync & daily reminders` is enough. A vague or blank description is rejected.
+- **3.1.2 — Terms of Use (EULA) + Privacy Policy must be in the App Store *metadata*, not just in-app.** Add a **Terms of Use link to the App Description** (Apple's standard EULA, `https://www.apple.com/legal/internet-services/itunes/dev/stdeula/`, is the zero-effort option) and set the **Privacy Policy URL** in App Information. In-app paywall links alone do not satisfy this.
+- **2.1 — don't ship the Apple Pay entitlement unless you actually use Apple Pay.** Apple **requires StoreKit/IAP for digital subscriptions — Apple Pay is not permitted for digital goods** (it's for physical goods/services), and StoreKit already gives the "pay with Face ID, no card entry" UX, so Apple Pay adds nothing for subscriptions. If `app.config.ts` adds `com.apple.developer.in-app-payments` (commonly gated on `EXPO_PUBLIC_APPLE_MERCHANT_ID`), it links **PassKit** into the binary and Apple flags 2.1 ("PassKit present, no Apple Pay integration"). Remove that entitlement (native change → needs a rebuild). To clear it *without* a rebuild, state in the version Review Notes: "Apple Pay is not implemented; all purchases use StoreKit (RevenueCat)."
+- **Metadata vs binary:** subscription descriptions, the EULA link, Privacy URL, and Review Notes are all **metadata** — editable while "Waiting for Review" and resubmittable **without a new build** (reply in Resolution Center to resume review). Only the entitlement removal requires a rebuild, so batch it with your next native build.

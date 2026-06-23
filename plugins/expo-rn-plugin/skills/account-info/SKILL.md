@@ -142,6 +142,12 @@ curl -X POST "https://<ref>.supabase.co/auth/v1/admin/users" \
 
 Give the reviewer a demo account in App Review Information **plus a screen recording** of the full flow — the deletion test consumes the demo account, so the recording is the durable proof.
 
+**Reviewer-in-guest-mode trap (real rejection):** the delete button is hidden for guest/anonymous users, so a reviewer who taps "Continue without an account" sees no deletion option and rejects under 5.1.1(v) — even though the feature works. Defend against it:
+- In **App Review Information → Review Notes**, lead with: *sign in with the demo account first — do NOT use "Continue without an account"*, then the exact steps (Settings tab → scroll to bottom → Delete account → confirm).
+- Put demo creds in the structured **Sign-In Information** fields (not just free-text notes), and **attach the screen recording** (you can also attach it to the Resolution Center reply).
+- Tell-tale that the reviewer never signed in: the demo account is still there afterward (untouched).
+- Optional hardening: show a disabled "Delete account" row or a "Sign in to manage your account" hint for guests, so the option is visible even before sign-in.
+
 ## Rules
 
 - Long values (especially `email`) must use `flex={1}` + `numberOfLines={1}` + `ellipsizeMode` (`"middle"` for email) with the label `flexShrink={0}` — otherwise a long email overflows the card and runs off-screen
