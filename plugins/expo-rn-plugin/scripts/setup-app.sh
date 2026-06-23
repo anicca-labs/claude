@@ -303,18 +303,18 @@ node -e "
     'yarn pre-build && doppler run --project mobile --config \${ENV:-stg} -- eas build --platform ios --profile preview --local --output ./device-dev-client-\${ENV:-stg}-\$(date +%Y%m%d-%H%M%S).ipa');
   add('dev-client-ios-device:prd', 'ENV=prd yarn dev-client-ios-device');
   add('build-store-ios',
-    'yarn pre-build && doppler run --project mobile --config \${ENV:-stg} -- eas build --platform ios --profile prd --local --non-interactive --output ./store-build-\${ENV:-stg}-\$(date +%Y%m%d-%H%M%S).ipa');
+    'yarn pre-build && doppler run --project mobile --config \${ENV:-stg} -- eas build --platform ios --profile prd --local --non-interactive --output ./store-build-\${ENV:-stg}.ipa');
   add('build-store-ios:prd', 'ENV=prd yarn build-store-ios');
   add('build-store-android',
-    'yarn pre-build && doppler run --project mobile --config \${ENV:-stg} -- eas build --platform android --profile prd --local --non-interactive --output ./store-build-\${ENV:-stg}-\$(date +%Y%m%d-%H%M%S).aab');
+    'yarn pre-build && doppler run --project mobile --config \${ENV:-stg} -- eas build --platform android --profile prd --local --non-interactive --output ./store-build-\${ENV:-stg}.aab');
   add('build-store-android:prd', 'ENV=prd yarn build-store-android');
   add('build-store-all', 'yarn build-store-android && yarn build-store-ios');
   add('build-store-all:prd', 'ENV=prd yarn build-store-all');
   add('deploy-store-ios',
-    'yarn build-store-ios && doppler run --project mobile --config \${ENV:-stg} -- eas submit --platform ios --profile \${ENV:-stg} --path \$(ls -t store-build-\${ENV:-stg}-*.ipa | head -1)');
+    'yarn build-store-ios && doppler run --project mobile --config \${ENV:-stg} -- eas submit --platform ios --profile \${ENV:-stg} --path ./store-build-\${ENV:-stg}.ipa');
   add('deploy-store-ios:prd', 'ENV=prd yarn deploy-store-ios');
   add('deploy-store-android',
-    'yarn build-store-android && doppler run --project mobile --config \${ENV:-stg} -- eas submit --platform android --profile \${ENV:-stg} --path \$(ls -t store-build-\${ENV:-stg}-*.aab | head -1)');
+    'yarn build-store-android && doppler run --project mobile --config \${ENV:-stg} -- eas submit --platform android --profile \${ENV:-stg} --path ./store-build-\${ENV:-stg}.aab');
   add('deploy-store-android:prd', 'ENV=prd yarn deploy-store-android');
   add('deploy-store-all', 'yarn deploy-store-android && yarn deploy-store-ios');
   add('deploy-store-all:prd', 'ENV=prd yarn deploy-store-all');
@@ -372,11 +372,11 @@ node -e "
     'dev-client-ios': 'yarn pre-build \$1 && doppler run --project mobile --config \$0 -- eas build --platform ios --profile development --local',
     'dev-client-android': 'yarn pre-build \$1 && doppler run --project mobile --config \$0 -- eas build --platform android --profile development --local',
     'dev-client-ios-device': 'yarn pre-build \$1 && doppler run --project mobile --config \$0 -- eas build --platform ios --profile preview --local',
-    'build-store-ios': 'yarn pre-build \$1 && doppler run --project mobile --config \$0 -- eas build --platform ios --profile prd --local --non-interactive --output ./store-build-\$(date +%Y%m%d-%H%M%S).ipa',
-    'build-store-android': 'yarn pre-build \$1 && doppler run --project mobile --config \$0 -- eas build --platform android --profile prd --local --non-interactive --output ./store-build-\$(date +%Y%m%d-%H%M%S).aab',
+    'build-store-ios': 'yarn pre-build \$1 && doppler run --project mobile --config \$0 -- eas build --platform ios --profile prd --local --non-interactive --output ./store-build.ipa',
+    'build-store-android': 'yarn pre-build \$1 && doppler run --project mobile --config \$0 -- eas build --platform android --profile prd --local --non-interactive --output ./store-build.aab',
     'build-store-all': 'yarn build-store-android \$1 && yarn build-store-ios \$1',
-    'deploy-store-ios': 'yarn build-store-ios \$1 && doppler run --project mobile --config \$0 -- eas submit --platform ios --profile \$0 --path \$(ls -t store-build-*.ipa | head -1)',
-    'deploy-store-android': 'yarn build-store-android \$1 && doppler run --project mobile --config \$0 -- eas submit --platform android --profile \$0 --path \$(ls -t store-build-*.aab | head -1)',
+    'deploy-store-ios': 'yarn build-store-ios \$1 && doppler run --project mobile --config \$0 -- eas submit --platform ios --profile \$0 --path ./store-build.ipa',
+    'deploy-store-android': 'yarn build-store-android \$1 && doppler run --project mobile --config \$0 -- eas submit --platform android --profile \$0 --path ./store-build.aab',
     'deploy-store-all': 'yarn deploy-store-android \$1 && yarn deploy-store-ios \$1',
   };
   const legacyArgPattern = /\$\{?[012](?::-[^}]*)?\}?|\"\$[12]\"/;
@@ -437,6 +437,34 @@ node -e "
     if (s && s.includes('eas ') && !s.includes('doppler run')) {
       pkg.scripts[key] = s.replace(/eas (build|submit)/, 'doppler run --project mobile --config $0 -- eas $1');
       console.log('   Patched: ' + key + ' now runs eas via doppler run');
+      changed = true;
+    }
+  }
+
+  // Migrate store/submission builds to a stable (non-timestamped) output filename so the
+  // artifact that gets submitted is always the one just built — no relying on \`ls -t … | head -1\`,
+  // which could pick a stale build. Dev-client builds keep their -<timestamp> (you often keep
+  // several around); only the store builds are overwritten each run.
+  const storeMigrations = [
+    // build-store: drop the -<timestamp> that precedes the extension
+    ['-\$(date +%Y%m%d-%H%M%S).ipa', '.ipa'],
+    ['-\$(date +%Y%m%d-%H%M%S).aab', '.aab'],
+    // deploy-store: point straight at the fixed filename instead of globbing the newest match
+    ['\$(ls -t store-build-\${ENV:-stg}-*.ipa | head -1)', './store-build-\${ENV:-stg}.ipa'],
+    ['\$(ls -t store-build-\${ENV:-stg}-*.aab | head -1)', './store-build-\${ENV:-stg}.aab'],
+    ['\$(ls -t store-build-*.ipa | head -1)', './store-build.ipa'],
+    ['\$(ls -t store-build-*.aab | head -1)', './store-build.aab'],
+  ];
+  for (const key of ['build-store-ios','build-store-android','deploy-store-ios','deploy-store-android']) {
+    const s = pkg.scripts[key];
+    if (!s) continue;
+    let updated = s;
+    for (const [from, to] of storeMigrations) {
+      if (updated.includes(from)) updated = updated.split(from).join(to);
+    }
+    if (updated !== s) {
+      pkg.scripts[key] = updated;
+      console.log('   Patched: ' + key + ' store build no longer timestamped');
       changed = true;
     }
   }

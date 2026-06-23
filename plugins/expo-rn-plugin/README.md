@@ -184,7 +184,7 @@ Set both `REVENUECAT_API_KEY` (iOS `appl_…`) and `REVENUECAT_ANDROID_API_KEY` 
 | `yarn build-store-ios:prd` / `yarn build-store-android:prd` | `store-build-prd.{ipa,aab}` | Store build for prd without submitting |
 | `yarn deploy-store-all:prd` | — | **Recommended release flow** — build prd + submit to TestFlight / Play internal testing for final verification with real purchases; promote to production from the console |
 
-> Every local build appends a `-<timestamp>` to its output filename (e.g. `store-build-stg-20260101-143022.ipa`) so re-running never overwrites a previously working artifact. `deploy-store-*` submits the most recent matching build.
+> Dev-client builds append a `-<timestamp>` to their output filename (e.g. `sim-dev-client-stg-20260101-143022.tar.gz`) so re-running never overwrites a previously working artifact. Store/submission builds (`build-store-*`) use a stable filename (`store-build-stg.{ipa,aab}`) that is overwritten on each run, so `deploy-store-*` always submits exactly the artifact that was just built.
 
 **Installing iOS simulator builds:** EAS local builds for the simulator are `.tar.gz` archives containing the `.app` bundle. Extract and install the latest with:
 
@@ -231,7 +231,7 @@ EAS (the recommended setup above) — CI authenticates with the key via `EXPO_TO
 
 > Only add the two fallback secrets (and uncomment them in
 > `expo-ios-deploy.yml`) if you are **not** using an ASC API key on EAS.
-
+>
 > Org-level secrets need **explicit repo access** — go to org Settings → Secrets → grant the repo. A secret set at org level is not automatically inherited by private repos.
 
 ### Xcode version
@@ -372,7 +372,7 @@ The plugin has two optional install-time config keys:
 | Key               | Description                                            |
 | ----------------- | ------------------------------------------------------ |
 | `doppler_project` | Your Doppler project name (e.g. `my-app`)              |
-| `doppler_config`  | Config to use (`dev` / `stg` / `prd`, default: `dev`) |
+| `doppler_config`  | Config to use (`dev` / `stg` / `prd`, default: `dev`)  |
 
 You do not need to fill these in manually. `setup-app.sh` runs `doppler setup` interactively and writes both values to `mcp.config.json` automatically. The install-time prompts are a fallback only.
 
