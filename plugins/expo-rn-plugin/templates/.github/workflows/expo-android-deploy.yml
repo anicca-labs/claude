@@ -23,6 +23,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # The full SDK 56 release build (multi-ABI native libs + lint-vital AARs)
+      # exhausts the ubuntu runner's ~14 GB disk — `bundleReleaseLocalLintAar`
+      # fails with "Could not add file ... to ZIP" once free space hits ~0.
+      # Reclaim space from pre-installed toolchains the build doesn't use. Keep
+      # the Android SDK/NDK and the hosted tool cache (Node lives there).
+      - name: Free up disk space
+        run: |
+          echo "Before:"; df -h /
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc /usr/local/.ghcup || true
+          sudo rm -rf /usr/share/swift || true
+          sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+          sudo rm -rf /usr/local/share/powershell /usr/share/miniconda || true
+          sudo docker image prune --all --force || true
+          echo "After:"; df -h /
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

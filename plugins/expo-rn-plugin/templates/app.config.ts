@@ -22,6 +22,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     infoPlist: {
       UIBackgroundModes: ["fetch", "remote-notification"],
       ITSAppUsesNonExemptEncryption: false,
+      // Apple rejects the binary (ITMS-90683) if a bundled SDK references Photo
+      // Library APIs without a purpose string — RevenueCat, expo-image, rive and
+      // react-native-svg all do, so this is required even if your app never picks
+      // a photo. Reword the string to match your app's actual photo usage.
+      NSPhotoLibraryUsageDescription:
+        "This app uses your photo library so you can add photos to your content.",
     },
     entitlements: {
       "aps-environment": "production",
