@@ -752,18 +752,34 @@ shipped build until it was reverted.
   (under the build's Doppler env):
 
   ```bash
+  # dump ALL sources (files AND "contents" sub-sources like packageJson:scripts)
   doppler run --project mobile --config stg -- node -e \
     'require("@expo/fingerprint").createFingerprintAsync(".").then(r=>console.log(
-      r.sources.filter(s=>s.type==="file"||s.type==="dir").map(s=>s.filePath).join("\n")))'
+      r.sources.map(s=>(s.type||"")+"  "+(s.id||s.filePath)).join("\n")))'
   ```
+
+  Two footgun shapes show up here: non-`node_modules` **`file`** entries (e.g. `.gitignore`) and
+  **`contents:*`** entries — notably **`contents:packageJson:scripts`**, which means editing *any*
+  npm script (`push-ota`, `deploy-store-*`, CI helpers) drifts the hash.
 
 - **Immediate unblock (no rebuild):** revert the offending non-native edit so the OTA fingerprint
   matches the shipped builds again — a needed `.gitignore` entry can live in `.git/info/exclude`,
   which is **not** fingerprinted — then re-push the OTA.
-- **Permanent fix:** add a **`.fingerprintignore`** (same glob syntax as `.gitignore`, at repo
-  root) listing non-native files that must never affect the runtime (e.g. `.gitignore`). This
-  changes the baseline hash, so it must ship **with a new build** (binary + OTAs adopt the stable
-  hash together), not as a standalone OTA.
+- **Permanent fix — two mechanisms, by source type:**
+  - **File sources** (e.g. `.gitignore`) → list them in a **`.fingerprintignore`** (gitignore glob
+    syntax, repo root). The `expo-updates fingerprint:generate` CLI — which both the OTA push and
+    the build use — honors it. Caveat: a `fingerprint.config.js` `ignorePaths` entry does **not**
+    reliably drop `.gitignore`; use `.fingerprintignore` for files.
+  - **Content sources** (e.g. `contents:packageJson:scripts`) can't be path-ignored — skip them in
+    **`fingerprint.config.js`** with `sourceSkips: ['PackageJsonScriptsAll']`. Only skip scripts if
+    none affect the native build (no prebuild/postinstall hooks touching native; a JS-only
+    `postinstall` like `i18n:compile` is fine).
+  - Both **shift the baseline hash**, so they ship **with a new build** (binary + OTAs adopt the
+    stable hash together), never as a standalone OTA. Decide the full skip set *before* that build
+    so you don't need another rebuild to add more. Afterward, **verify** the build's CI `Resolved
+    runtime version` equals `fingerprint:generate`'s hash (both must honor the same config).
+  - Only exclude **truly** non-native files/sources — excluding a real native input would let an
+    OTA ship to a binary that's missing that native change.
 
 ## Delivery & apply timing
 
