@@ -1,4 +1,8 @@
 {
+  "doppler": {
+    "project": "mobile",
+    "config": "stg"
+  },
   "database": {
     "schema": "api"
   },

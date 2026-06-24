@@ -1,4 +1,13 @@
 {
+  "enableAllProjectMcpServers": true,
+  "extraKnownMarketplaces": {
+    "ksairi-org": {
+      "source": {
+        "source": "github",
+        "repo": "ksairi-org/claude"
+      }
+    }
+  },
   "enabledPlugins": {
     "expo-rn-plugin@ksairi-org": true
   },
