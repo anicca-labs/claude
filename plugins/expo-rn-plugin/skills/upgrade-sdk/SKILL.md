@@ -57,6 +57,14 @@ This is a **stale dev client** — the installed native binary is from before th
 
 A "stay current" bump (e.g. `react-native-purchases` 10.0.1 → 10.3.x) can pull an iOS pod version CocoaPods can't resolve, failing only the iOS build while Android passes. Pin native libs to a known-good version; don't bump them as part of an SDK upgrade unless required.
 
+### CI store builds (SDK 56): iOS Xcode, Android disk, Apple purpose strings
+
+A full `eas build --local` store deploy on a CI runner surfaces three SDK-56 issues that local builds (newer Xcode, plenty of disk) don't:
+
+- **iOS needs Xcode 26.4.** SDK 56 ships `expo-modules-jsi` with `weak let`, which only the Swift toolchain in **Xcode 26.4+** accepts — older Xcode 26.x (e.g. 26.0) fails the `ExpoModulesJSI` xcframework build with `'weak' must be a mutable variable`. The `macos-15` runner tops out at Xcode 26.3, so use **`runs-on: macos-26`** and select **Xcode 26.4**. A `SWIFT_VERSION=5.0` post_install config plugin is a dead end here (it doesn't touch the prebuilt xcframework build) — fix the toolchain, not the language mode.
+- **Android: free disk before the build.** The full multi-ABI release build + lint-vital AARs exhausts the ubuntu runner's ~14 GB disk; `react-native-reanimated:bundleReleaseLocalLintAar` then fails with `Could not add file ... to ZIP` (it's disk, not reanimated). Add a step that removes unused toolchains (dotnet, ghc/.ghcup, swift, CodeQL, docker images) — keep the Android SDK/NDK and the hosted tool cache (Node).
+- **iOS submit hits ITMS-90683 (missing purpose string).** Bundled SDKs (RevenueCat, expo-image, rive, react-native-svg) reference Photo Library APIs, so Apple rejects the *uploaded* binary unless `NSPhotoLibraryUsageDescription` is in `ios.infoPlist` — even if the app never picks a photo. Note `eas submit` "success" only means *uploaded*; Apple validates asynchronously and emails the rejection.
+
 ## Reliability rules
 
 - **Capture real exit codes.** Running `cmd; echo "done"` in a background task makes the task exit 0 even when `cmd` failed (the echo's status wins). Check the actual command's `$?` and grep the log for `Build failed` / non-zero — don't trust a green wrapper.
