@@ -255,6 +255,27 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/setup-app.sh"
 
 MCP servers ship with pre-built `dist/` — no build step required after install.
 
+## Updating the plugin
+
+When the plugin is installed at **project scope** (the default for app repos, recorded with `--scope project`), the `/plugin` UI's "Update" action does **not** apply to it — that flow targets user-scoped plugins, so a project pin shows as "installed" with no Update button no matter how many times you refresh the marketplace. Use the CLI instead, and **always pass the matching scope** (`claude plugin update` defaults to `--scope user`):
+
+```bash
+# 1. Refresh the marketplace catalog from its source
+claude plugin marketplace update ksairi-org
+
+# 2. Update the plugin at the SAME scope it was installed (project for app repos)
+claude plugin update expo-rn-plugin@ksairi-org --scope project
+
+# 3. Restart Claude Code — the plugin is loaded at session start,
+#    so the running session keeps the old version until you reload.
+```
+
+Verify the active version with `claude plugin list`.
+
+**Manual fallback** (if the CLI can't resolve, e.g. offline): the marketplace fetch lands a copy under `~/.claude/plugins/cache/ksairi-org/expo-rn-plugin/<version>/`. Point the project's entry in `~/.claude/plugins/installed_plugins.json` at that path — update `installPath`, `version`, and `gitCommitSha` (the marketplace HEAD from `git -C ~/.claude/plugins/marketplaces/ksairi-org rev-parse HEAD`) — then restart.
+
+> Distinct from [Updating existing apps](#updating-existing-apps) below, which covers propagating plugin changes into an app already built from it.
+
 ## Plugin components
 
 ### Skills (invoke with `/expo-rn-plugin:<name>`)
