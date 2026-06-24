@@ -161,6 +161,91 @@ import 'expo-router/entry'
 
 **Critical:** if the FCM payload contains a `notification` key, Android FCM displays the notification automatically. Scheduling a local notification in the handler too causes a duplicate. Return early when `remoteMessage.notification` is present — only schedule for data-only messages.
 
+## iOS foreground banners: the `firebase.json` gotcha (React Native Firebase)
+
+When `@react-native-firebase/messaging` is installed, **it — not expo-notifications — owns the iOS `UNUserNotificationCenter` delegate** (via method swizzling). So on iOS, `setNotificationHandler`'s `shouldShowBanner`/`shouldShowList` are **ignored for foreground presentation**: RNFirebase's delegate decides, and its default foreground options are empty → **no banner, sound, or badge shows while the app is in the foreground**. Taps and background/lock-screen delivery still work, which makes this very easy to misdiagnose as a permissions or scheduling bug. It affects **all** foreground notifications, local ones included, because they all flow through that one delegate.
+
+Fix — tell RNFirebase to present in the foreground, in `firebase.json` at the repo root:
+
+```json
+{
+  "react-native": {
+    "messaging_ios_foreground_presentation_options": ["badge", "sound", "list", "banner"]
+  }
+}
+```
+
+- Valid options: `badge`, `sound`, `list`, `banner` (maps to Apple's `UNNotificationPresentationOptions`).
+- This does **not** disable the Firebase app-delegate proxy, so **FCM push keeps working**. Do *not* reach for the old `FirebaseAppDelegateProxyEnabled=false` workaround — it can break APNs/token registration.
+- It is a **native config change**: it only takes effect in a new build, and it shifts the runtime-version fingerprint on **both** platforms (see the `ota` skill), so it **cannot** be delivered via OTA. `firebase.json` is also in neither the OTA nor the auto-build CI path filter, so trigger the store build manually.
+- Keep `setNotificationHandler` with `shouldShowBanner`/`shouldShowList` regardless — it's what Android uses and what iOS would use if RNFirebase were removed.
+- **Symptom signature** of this specific bug: `getAllScheduledNotificationsAsync()` shows the notification scheduled, permission is `granted` (iOS `getPermissionsAsync().ios.status === 2` = authorized), Android shows it fine, but iOS shows nothing in the foreground. That exact combination points here, not at permissions.
+
+## Local-notification deep-linking (tap → open the right screen)
+
+For scheduled notifications that should open a specific screen/entity on tap, attach a typed payload and handle **all three launch states** (foreground, background-in-memory, cold-start-from-killed):
+
+```ts
+// schedule with a discriminated payload
+content: { title, body, data: { type: 'memory', entryId: entry.id } }
+```
+
+```ts
+// in a root-level hook (mounted for the whole app lifecycle)
+const handled = useRef<Set<string>>(new Set())
+const handleResponse = (r: Notifications.NotificationResponse | null) => {
+  if (!r) return
+  const { identifier } = r.notification.request
+  if (handled.current.has(identifier)) return            // dedupe cold-start + listener
+  const data = r.notification.request.content.data
+  if (data?.type === 'memory' && typeof data?.entryId === 'string') {
+    handled.current.add(identifier)
+    setPendingEntryId(data.entryId)                       // RECORD only — do NOT navigate here
+  }
+}
+// cold start (tap launched a killed app): the listener never fires for this — recover it
+Notifications.getLastNotificationResponseAsync().then(handleResponse)
+// foreground + background-in-memory taps
+const sub = Notifications.addNotificationResponseReceivedListener(handleResponse)
+return () => sub.remove()
+```
+
+Hard-won rules for the tap→navigate flow:
+
+- **Cold start needs `getLastNotificationResponseAsync()`.** `addNotificationResponseReceivedListener` does **not** fire when the tap cold-launched a killed app. Run both and dedupe by `request.identifier`, or the response gets lost and the app just opens to its default screen.
+- **Decouple recording from navigating.** Stash the target id in a store; navigate from a *separate* effect that only runs once the user is authenticated **and** the target data has loaded. The tap can arrive while signed out, so you must **replay it after login**, not drop it.
+- **Clear the data query cache on sign-out.** If the entity list is a React Query cache keyed *without* the user id, sign-out leaves it stale, so after login the nav effect's deps never change → the replay never fires (you end up on the wrong screen, with the target screen silently mounted/opened in the background). `queryClient.removeQueries({ queryKey: [...] })` in the `SIGNED_OUT` handler forces the post-login refetch that re-fires the nav effect *after* the auth transition settles.
+- **Keep the navigation synchronous.** If the target screen consumes-and-clears the pending id the moment it opens (common when it's always mounted), deferring the navigation (`InteractionManager.runAfterInteractions`, `setTimeout`) lets the clear re-run the effect and cancel the deferred navigate before it fires → the tab/route switch never lands. Call `router.push(...)` directly in the effect body.
+- With `expo-router` Material Top Tabs + `lazy: false`, the target tab's screen is mounted even when unfocused — it can open its modal in the background, so the *only* missing piece is the tab switch. Don't rely on the unfocused screen's side effect to also switch tabs.
+
+## Scheduling batches without duplicates
+
+For data-driven scheduled notifications (e.g. N days of "memories" derived from a list), the scheduling effect re-runs on every data refetch (new array reference), so a naive "already scheduled today" guard performs a read-modify-write across many `await`s and **races → double-schedules**. Make the scheduler concurrency-safe:
+
+```ts
+let inFlight: Promise<void> | null = null
+export function scheduleMemories(entries, title, hour = 9, minute = 0): Promise<void> {
+  if (inFlight) return inFlight                                   // 1. single-flight lock
+  inFlight = (async () => {
+    try {
+      const today = new Date().toDateString()
+      if ((await AsyncStorage.getItem(LAST_KEY)) === today) return // 2. guard BEFORE cancelling
+      // ...cancel previously-scheduled ids (tracked in AsyncStorage)...
+      await AsyncStorage.setItem(LAST_KEY, today)                 // 3. mark before the await-heavy loop
+      // ...schedule loop, collect ids, persist the id list...
+    } finally {
+      inFlight = null
+    }
+  })()
+  return inFlight
+}
+```
+
+- **Single-flight lock** — concurrent effect runs return the same promise instead of both scheduling a full batch (you'd otherwise get 2× notifications at the same time, and the second id-list write orphans the first batch so it can never be cancelled).
+- **Check the daily guard BEFORE cancelling** — otherwise a same-day re-run cancels the already-scheduled batch and then bails, leaving nothing scheduled.
+- **Write the guard before the await-heavy loop** to close the read-modify-write window for anything that slips past the lock.
+- A **stg-only test trigger** gated on `process.env.EXPO_PUBLIC_ENV === 'stg'` that fires one notification ~15s after app open is invaluable for exercising the tap/deep-link/foreground paths without waiting for the real daily trigger. Have it cancel its own previous pending notification (track the id) so relaunching can't stack copies, and strip it (or keep it strictly env-gated) before release.
+
 ## Token registration (`src/services/user-devices/index.ts`)
 
 Save the FCM token to `device_tokens` after permission is granted and on every sign-in:
@@ -174,10 +259,12 @@ export async function upsertDeviceToken(userId: string): Promise<void> {
   if (!fcmToken) return
   await supabase.from('device_tokens').upsert(
     { user_id: userId, fcm_token: fcmToken, updated_at: new Date().toISOString() },
-    { onConflict: 'user_id' },
+    { onConflict: 'fcm_token' },
   )
 }
 ```
+
+**Conflict target = `fcm_token`, not `user_id`** (the table needs a UNIQUE constraint on `fcm_token`). One user legitimately has multiple devices — `onConflict: 'user_id'` would collapse them to a single row, so the user'd only get push on their most-recently-signed-in device. Keying on `fcm_token` keeps one row per device and refreshes the row when the same device re-signs-in. Tradeoff: stale tokens from old devices accumulate (clean them up when FCM reports them unregistered, or on a TTL).
 
 Call `upsertDeviceToken(user.id)` in two places:
 
@@ -279,6 +366,7 @@ If you want Doppler to be the source of truth, add an explicit sync step — a s
 ```
 
 Hard-won rules:
+
 - **Never push `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`** — Supabase auto-injects these into every function and `supabase secrets set` rejects the `SUPABASE_` prefix.
 - **`FIREBASE_PRIVATE_KEY` is multiline.** Encode it single-line with literal `\n` for env-file safety; the function decodes with `.replace(/\\n/g, '\n')`, so real-newline or `\n`-escaped both work.
 - **Verify safely before/after a push:** `supabase secrets list`'s `DIGEST` is plain `sha256(value)` — compare it to `sha256` of the Doppler value to detect whether a push would actually change anything (no values exposed). Before re-keying a live env, confirm the key still works by minting a Google token (JWT-bearer flow, `firebase.messaging` scope) — a service account can hold several valid keys, so a "different" key may still be valid.
@@ -292,7 +380,11 @@ Hard-won rules:
 
 - Always guard with `Device.isDevice` — FCM and permission APIs crash or silently fail on simulators
 - Never use `shouldShowAlert` in `setNotificationHandler` — it is deprecated; use `shouldShowBanner` + `shouldShowList`
-- Upsert with `onConflict: 'user_id'` — one token row per user, refreshed on each sign-in
+- **iOS foreground banners need `messaging_ios_foreground_presentation_options` in `firebase.json`** when `@react-native-firebase/messaging` is installed — `shouldShowBanner` alone is ignored because RNFirebase owns the iOS notification delegate. Native change → new build, not OTA.
+- **Cold-start taps need `getLastNotificationResponseAsync()`** on mount — `addNotificationResponseReceivedListener` does not fire when the tap launched a killed app. Dedupe the two by `request.identifier`.
+- **Deep-link taps: record the target, navigate separately** — replay after login (not drop), navigate synchronously (deferral gets cancelled), and clear the data query cache on `SIGNED_OUT` so the post-login refetch re-fires the nav effect.
+- **Data-driven batch schedulers need a single-flight lock** + check the daily guard *before* cancelling — the scheduling effect re-runs on every refetch and otherwise double-schedules (or wipes the batch).
+- Upsert with `onConflict: 'fcm_token'` (table needs a UNIQUE constraint on it) — one row per device so a user with multiple devices gets push on all of them; `onConflict: 'user_id'` would collapse them to one device
 - `scheduleDailyReminder` must cancel the previous notification ID before scheduling a new one — otherwise duplicate reminders accumulate
 - In `setBackgroundMessageHandler`, return early when `remoteMessage.notification` is present — FCM already displays it; scheduling a local notification too causes duplicates
 - Never pass `sound: 'default'` to `setNotificationChannelAsync` — expo-notifications treats it as a custom file lookup and logs a warning; omit it to use the system default

@@ -34,10 +34,16 @@ The store build is still required when native code changes. OTA handles JS-only 
 8. Add path filters to the store build workflow so it only runs on native-touching files
 9. Do one native rebuild so `expo-updates` is embedded in the binary
 
-The two CI workflows are mutually exclusive by path:
+The two CI workflows are mutually exclusive by path — JS changes ship via OTA, native
+changes ship via a store rebuild (an OTA can never deliver native code):
 
-- **Store build** (`expo-store-deploy.yml`) → `package.json`, `yarn.lock`, `app.config.ts`, `eas.json`
-- **OTA push** (`expo-ota-update.yml`) → `src/**`, `assets/**`, `index.js`, `lingui.config.ts`
+- **OTA push** (`expo-ota-update.yml`) → `src/**`, `app/**`, `assets/**`, `index.js`, `lingui.config.ts`
+- **Store build** (`expo-store-deploy.yml`) → `package.json`, `yarn.lock`, `app.config.ts`, `eas.json`, `google-services-*.json`, `GoogleService-Info-*.plist`
+
+> **A file in NEITHER path list will not auto-deploy.** `firebase.json`, for example, is in
+> no filter — yet it affects the native fingerprint (see below), so a `firebase.json` change
+> must be shipped via a **manual `workflow_dispatch` of the store build**, not an OTA. When you
+> add a new native-config file, decide which list it belongs in (almost always the store build).
 
 ## app.config.ts
 
@@ -50,8 +56,13 @@ and `NoSuchMethodError` at compile time. `ExpoRootProjectPlugin` already default
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   version: config.version,           // reads from package.json — single source of truth
+  // Fingerprint policy: runtimeVersion is a per-platform HASH of the native layer (native
+  // deps, app.config.ts, config plugins, entitlements, build properties, patches, firebase.json,
+  // and config-affecting env vars baked at build). Changing native code automatically changes it,
+  // so an OTA can never be served to a binary that lacks the native module it needs — no manual
+  // version bumping. JS-only changes leave the fingerprint untouched, so their OTAs apply.
   runtimeVersion: {
-    policy: 'appVersion',            // runtime version = package.json version
+    policy: 'fingerprint',
   },
   updates: {
     url: process.env.EXPO_UPDATE_URL,
@@ -281,6 +292,7 @@ resolved versions for reproducible deploys.
 #!/usr/bin/env node
 import fs from 'fs'
 import { createRequire } from 'module'
+import { execFileSync } from 'child_process'
 import path from 'path'
 import crypto from 'crypto'
 import { pruneOtaUpdates } from './prune-ota-updates.mjs'
@@ -291,7 +303,7 @@ const { getConfig } = require('@expo/config')
 const SUPABASE_URL = requireEnv('SUPABASE_URL')
 const SERVICE_ROLE_KEY = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
 const CHANNEL = requireEnv('EXPO_UPDATE_CHANNEL')
-const RUNTIME_VERSION = requireEnv('EXPO_RUNTIME_VERSION')
+// No EXPO_RUNTIME_VERSION — the runtimeVersion is the per-platform fingerprint, computed below.
 const DIST_DIR = process.env.DIST_DIR ?? './dist'
 const BUCKET = 'expo-updates'
 
@@ -299,6 +311,19 @@ function requireEnv(name) {
   const val = process.env[name]
   if (!val) throw new Error(`Missing required env var: ${name}`)
   return val
+}
+
+// runtimeVersion is the per-platform fingerprint (app.config.ts uses `policy: 'fingerprint'`).
+// This MUST be the same `expo-updates` computation the EAS build embeds, run under the SAME
+// Doppler env as the build — config-affecting env vars (e.g. EXPO_UPDATE_URL) change the hash.
+function fingerprintFor(platform) {
+  const bin = path.join('node_modules', '.bin', 'expo-updates')
+  const out = execFileSync(bin, ['fingerprint:generate', '--platform', platform], {
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024,
+  })
+  const hash = JSON.parse(out).hash
+  if (!hash) throw new Error(`Could not compute ${platform} fingerprint`)
+  return hash
 }
 
 function sha256b64(filePath) {
@@ -332,11 +357,11 @@ async function insertUpdate(row) {
   if (!res.ok) throw new Error(`DB insert failed: ${res.status} ${await res.text()}`)
 }
 
-async function pushPlatform(platform, metadata, updateId, expoConfig) {
+async function pushPlatform(platform, metadata, updateId, expoConfig, runtimeVersion) {
   const platformMeta = metadata.fileMetadata?.[platform]
   if (!platformMeta?.bundle) { console.log(`  no ${platform} bundle in export, skipping`); return }
 
-  console.log(`\nPublishing ${platform} update ${updateId}...`)
+  console.log(`\nPublishing ${platform} update ${updateId} (runtimeVersion ${runtimeVersion})...`)
   const prefix = `${CHANNEL}/${updateId}`
   const storageBase = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}`
 
@@ -354,7 +379,7 @@ async function pushPlatform(platform, metadata, updateId, expoConfig) {
   }
 
   await insertUpdate({
-    id: updateId, channel: CHANNEL, platform, runtime_version: RUNTIME_VERSION,
+    id: updateId, channel: CHANNEL, platform, runtime_version: runtimeVersion,
     launch_asset: {
       hash: sha256b64(bundleLocalPath),
       // CRITICAL: use the bundle filename as key — it includes the content hash, making it
@@ -379,8 +404,12 @@ async function main() {
   if (!fs.existsSync(metadataPath)) throw new Error(`${metadataPath} not found — run 'yarn expo export --output-dir dist' first`)
   const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'))
   const { exp: expoConfig } = getConfig(process.cwd(), { skipSDKVersionRequirement: true })
-  await pushPlatform('ios', metadata, crypto.randomUUID(), expoConfig)
-  await pushPlatform('android', metadata, crypto.randomUUID(), expoConfig)
+  // iOS and Android fingerprints differ — each OTA is tagged with the runtimeVersion its
+  // target binary was built with, so a platform's update only reaches matching binaries.
+  const iosRuntime = fingerprintFor('ios')
+  const androidRuntime = fingerprintFor('android')
+  await pushPlatform('ios', metadata, crypto.randomUUID(), expoConfig, iosRuntime)
+  await pushPlatform('android', metadata, crypto.randomUUID(), expoConfig, androidRuntime)
   // Bound Storage growth: drop superseded updates right after publishing the new one.
   await pruneOtaUpdates()
   console.log('\nDone.')
@@ -396,6 +425,15 @@ doppler run --project mobile --config stg -- yarn expo export --clear --platform
 ```
 
 The `--clear` flag prevents Metro from serving a cached bundle with stale module IDs.
+
+> **Compute the fingerprint under the SAME Doppler env as the build.** `expo-updates
+> fingerprint:generate` reads the resolved native config, so config-affecting env vars baked at
+> build time (e.g. `EXPO_UPDATE_URL`) change the hash. The push script therefore runs inside the
+> same `doppler --config <env>` used for the build. **Prefer the CI OTA workflow over a local
+> `yarn push-ota`**: the CI clean-env fingerprint is what reliably matches the store builds. A
+> local push can match, but only if your working tree exactly equals the built commit and env —
+> otherwise the OTA is tagged with a fingerprint no installed binary carries and silently never
+> applies.
 
 ## Storage retention (`scripts/prune-ota-updates.mjs`)
 
@@ -597,8 +635,11 @@ name: Push OTA Update
 on:
   push:
     branches: [stg, main]
+    # JS/asset paths only — native-touching files (package.json, yarn.lock, app.config.ts,
+    # eas.json, google-services-*.json, GoogleService-Info-*.plist) trigger the store build.
     paths:
       - 'src/**'
+      - 'app/**'
       - 'assets/**'
       - 'index.js'
       - 'lingui.config.ts'
@@ -635,10 +676,11 @@ jobs:
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
       - name: Push OTA update
+        # The script computes the per-platform runtimeVersion via the fingerprint (no
+        # EXPO_RUNTIME_VERSION) under this same Doppler env, so it matches the store build.
         run: |
-          RUNTIME_VERSION=$(node -p "require('./package.json').version")
           doppler run --project mobile --config ${{ steps.env.outputs.channel }} -- \
-            bash -c "EXPO_UPDATE_CHANNEL=${{ steps.env.outputs.channel }} EXPO_RUNTIME_VERSION=$RUNTIME_VERSION node scripts/push-ota-update.mjs"
+            bash -c "EXPO_UPDATE_CHANNEL=${{ steps.env.outputs.channel }} node scripts/push-ota-update.mjs"
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
 ```
@@ -649,7 +691,7 @@ jobs:
 {
   "build-ipa": "yarn pre-build && echo 'y' | doppler run --project mobile --config ${ENV:-stg} -- eas build --platform ios --profile preview --local --output ./device-app-build-${ENV:-stg}.ipa",
   "build-ipa:prd": "ENV=prd yarn build-ipa",
-  "push-ota": "doppler run --project mobile --config ${ENV:-stg} -- bash -c 'yarn expo export --clear --platform ios --platform android --output-dir dist && EXPO_UPDATE_CHANNEL=${ENV:-stg} EXPO_RUNTIME_VERSION=$(node -p \"require(\\\"./package.json\\\").version\") node scripts/push-ota-update.mjs'",
+  "push-ota": "doppler run --project mobile --config ${ENV:-stg} -- bash -c 'yarn expo export --clear --platform ios --platform android --output-dir dist && EXPO_UPDATE_CHANNEL=${ENV:-stg} node scripts/push-ota-update.mjs'",
   "push-ota:prd": "ENV=prd yarn push-ota"
 }
 ```
@@ -663,21 +705,84 @@ Note `echo 'y' |` before the `eas build` command — EAS local builds prompt for
 | `EXPO_UPDATE_URL` | `https://<stg-ref>.supabase.co/functions/v1/expo-update-manifest` | `https://<prd-ref>.supabase.co/functions/v1/expo-update-manifest` |
 | `EXPO_UPDATE_CHANNEL` | `stg` | `prd` |
 
-## How runtimeVersion works
+`EXPO_UPDATE_URL` is baked into the native config, so it **participates in the fingerprint** —
+the OTA push and the build must run under the same Doppler env, or their fingerprints diverge
+and the OTA never matches the build.
 
-`policy: 'appVersion'` means runtime version = `version` in `package.json`. Devices only receive OTA updates that match the runtime version they were built with. When you add a native module, bump `package.json` version and do a store rebuild — old binaries keep receiving updates for their version, new binaries get updates for the new version.
+## How runtimeVersion works (`policy: 'fingerprint'`)
 
-## Verifying the manifest server
+With `runtimeVersion: { policy: 'fingerprint' }` the runtime version is a per-platform **native
+fingerprint hash** (e.g. iOS `489751…`, Android `7244faca…`) — **not** the app version. The
+binary embeds the fingerprint computed at build time; each OTA is tagged with the fingerprint
+`expo-updates fingerprint:generate` produces for that platform.
+
+**OTAs are fingerprint-gated.** An OTA only reaches a binary whose embedded runtime fingerprint
+**exactly matches** the OTA's `runtime_version`. A mismatch means the OTA *silently never
+applies* — no error, the app just keeps running its old bundle. This is the #1 cause of "I
+pushed an OTA but the device didn't update." (Debugging: read the live OTA's `runtime_version`
+from the table/manifest and compare it to the build's fingerprint — see verification recipe below.)
+
+**What changes the fingerprint:**
+
+- **JS-only changes do NOT change it** → the OTA targets the same runtime as the installed
+  build and applies. This is the whole point: ship JS via OTA, ship native via builds.
+- **Native-config changes shift it — usually for BOTH platforms.** Native deps
+  (`package.json`/`yarn.lock`), `app.config.ts`, config plugins, entitlements, build properties,
+  patches, `firebase.json`, AND config-affecting env vars baked at build (e.g. `EXPO_UPDATE_URL`)
+  all feed the hash. Confirmed first-hand: a one-line **iOS-only** `firebase.json` change shifted
+  **both** the iOS and Android fingerprints. Such a change **cannot** be delivered by OTA — it
+  needs new full builds of both platforms, and any device left on the old build stops receiving
+  OTAs (its old fingerprint no longer matches new OTAs). No manual version bumping is needed: the
+  hash changes automatically, so an OTA can never be served to a binary lacking the native module.
+
+## Delivery & apply timing
+
+`checkAutomatically: 'ON_LOAD'` + the default `fallbackToCacheTimeout: 0` means: the app
+**launches immediately on its current bundle**, downloads any new matching update in the
+**background**, and applies it on the **next cold start**. Consequences:
+
+- A plain relaunch picks up the update on the next launch *after the download completes* (so the
+  very next launch may still be old if the download hadn't finished — the one after gets it).
+- **Background → foreground does NOT apply a pending update** — only a fresh process launch does.
+- To apply immediately without waiting for a relaunch, expose an in-app "Update ready → restart"
+  button that calls `Updates.reloadAsync()`.
+
+## Verifying what's live
+
+**1. Read the current build's fingerprint** (this is the `expo-runtime-version` value a real
+device sends). Run under the same Doppler env as the build:
+
+```bash
+doppler run --project mobile --config stg -- yarn dlx expo-updates fingerprint:generate --platform ios
+# → {"sources":[...],"hash":"489751…"}   ← the hash is the runtimeVersion
+```
+
+**2. Hit the manifest server with that exact fingerprint** — `noUpdateAvailable` before the
+first matching push, a full manifest after. A wrong/old fingerprint always yields
+`noUpdateAvailable`, which is exactly how a mismatch hides:
 
 ```bash
 curl -s \
   -H "expo-platform: ios" \
-  -H "expo-runtime-version: <package.json version>" \
+  -H "expo-runtime-version: <fingerprint hash from step 1>" \
   -H "expo-channel-name: stg" \
   "https://<stg-ref>.supabase.co/functions/v1/expo-update-manifest"
 ```
 
-Returns `noUpdateAvailable` directive before first push, full manifest after.
+**3. Query the table directly** to see every registered OTA and its `runtime_version` (compare
+against step 1). PostgREST with the service-role key and `Accept-Profile: api` (the table is in
+the `api` schema, not `public`):
+
+```bash
+curl -s \
+  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Accept-Profile: api" \
+  "https://<stg-ref>.supabase.co/rest/v1/expo_updates?select=id,platform,runtime_version,created_at&order=created_at.desc"
+```
+
+If a freshly pushed row's `runtime_version` differs from the installed build's fingerprint, the
+OTA will never reach that build — rebuild, or re-push from the exact build commit/env.
 
 ## Pushing an update
 
