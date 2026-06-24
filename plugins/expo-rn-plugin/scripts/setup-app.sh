@@ -75,6 +75,15 @@ copy_if_missing "$PLUGIN_ROOT/templates/CLAUDE.md"                        "$APP_
 copy_if_missing "$PLUGIN_ROOT/templates/mcp.config.json"                  "$APP_ROOT/mcp.config.json"
 copy_if_missing "$PLUGIN_ROOT/templates/.claude/settings.json"            "$APP_ROOT/.claude/settings.json"
 
+# Commit the MCP config + launcher into the app so Claude Code on the web — where
+# the marketplace plugin is NOT installed (SKIP_PLUGIN_MARKETPLACE=true) and
+# CLAUDE_PLUGIN_ROOT is unset — can still launch the servers. The .mcp.json uses
+# "${CLAUDE_PLUGIN_ROOT:-.}/bin/mcp-run.sh": a no-op locally (plugin installed),
+# resolving to the app's committed ./bin/mcp-run.sh on the web.
+copy_if_missing "$PLUGIN_ROOT/templates/.mcp.json"                        "$APP_ROOT/.mcp.json"
+copy_if_missing "$PLUGIN_ROOT/bin/mcp-run.sh"                             "$APP_ROOT/bin/mcp-run.sh"
+chmod +x "$APP_ROOT/bin/mcp-run.sh"
+
 # Copy commands (each individually so existing ones are preserved)
 for cmd in "$PLUGIN_ROOT/templates/.claude/commands/"*; do
   [ -f "$cmd" ] && copy_if_missing "$cmd" "$APP_ROOT/.claude/commands/$(basename "$cmd")"

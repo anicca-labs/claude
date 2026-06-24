@@ -330,6 +330,10 @@ All stdio servers that require secrets are wrapped via Doppler (`bin/mcp-run.sh`
 `figma-developer-mcp` because the design-token sync (`figma/sync-figma-tokens.sh`) depends
 on its tool surface — evaluate Figma's official Dev Mode MCP before switching.
 
+`setup-app.sh` also commits a copy of `.mcp.json` and `bin/mcp-run.sh` into each app
+so the servers come up in [Claude Code on the web](docs/claude-code-web-setup.md),
+where the marketplace plugin isn't installed.
+
 ### Hooks (automatic)
 
 | Event                      | Hook                         | Effect                                                                                                |

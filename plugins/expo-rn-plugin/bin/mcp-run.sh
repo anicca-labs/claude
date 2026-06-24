@@ -48,11 +48,25 @@ _find_config() {
   done
 }
 
+# Read doppler.<key> from mcp.config.json. Prefer node (always present in an
+# Expo/RN app, and on the Claude Code web container) and fall back to python3
+# for environments that ship Python but not a project-local node on PATH.
+_json_doppler() {
+  local _f="$1" _key="$2" _default="${3:-}"
+  if command -v node >/dev/null 2>&1; then
+    node -e 'try{const c=require(process.argv[1]);const v=c.doppler&&c.doppler[process.argv[2]];process.stdout.write(v?String(v):(process.argv[3]||""))}catch(e){process.stdout.write(process.argv[3]||"")}' "$_f" "$_key" "$_default" 2>/dev/null && return
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get('doppler',{}).get(sys.argv[2]) or sys.argv[3])" "$_f" "$_key" "$_default" 2>/dev/null && return
+  fi
+  printf '%s' "$_default"
+}
+
 if [ -z "$PROJECT" ]; then
   _cfg=$(_find_config)
   if [ -n "$_cfg" ]; then
-    PROJECT=$(python3 -c "import json; d=json.load(open('$_cfg')); print(d.get('doppler',{}).get('project',''))" 2>/dev/null || echo "")
-    CONFIG=$(python3 -c "import json; d=json.load(open('$_cfg')); print(d.get('doppler',{}).get('config','dev'))" 2>/dev/null || echo "")
+    PROJECT=$(_json_doppler "$_cfg" project "")
+    CONFIG=$(_json_doppler "$_cfg" config "dev")
     # Also switch to that directory so relative paths in the server work correctly
     cd "$(dirname "$_cfg")"
   fi
