@@ -735,6 +735,36 @@ from the table/manifest and compare it to the build's fingerprint — see verifi
   OTAs (its old fingerprint no longer matches new OTAs). No manual version bumping is needed: the
   hash changes automatically, so an OTA can never be served to a binary lacking the native module.
 
+### ⚠️ Non-native files can silently bump the fingerprint — the `.gitignore` footgun
+
+`@expo/fingerprint` hashes some files that have nothing to do with the native layer — notably
+**`.gitignore`** (it is a fingerprint *source*). So a trivial edit like adding one ignore line
+**changes the runtime fingerprint**, and from that push onward every OTA drifts off the
+fingerprint your already-installed builds embed → OTAs **silently stop reaching them**. Confirmed
+first-hand: a one-line `.gitignore` addition moved the hash and broke OTA delivery to every
+shipped build until it was reverted.
+
+- **Symptom:** OTAs that *used* to land suddenly don't — on every device at once — with **no
+  native change** in the diff. `git diff <build-commit>..HEAD` shows only "harmless" files, but
+  one of them (`.gitignore`, etc.) is in the fingerprint source set.
+- **Diagnose:** checkout the build's commit and re-run `fingerprint:generate` — if the hash
+  differs from HEAD, something non-native drifted it. To see exactly which file, dump the sources
+  (under the build's Doppler env):
+
+  ```bash
+  doppler run --project mobile --config stg -- node -e \
+    'require("@expo/fingerprint").createFingerprintAsync(".").then(r=>console.log(
+      r.sources.filter(s=>s.type==="file"||s.type==="dir").map(s=>s.filePath).join("\n")))'
+  ```
+
+- **Immediate unblock (no rebuild):** revert the offending non-native edit so the OTA fingerprint
+  matches the shipped builds again — a needed `.gitignore` entry can live in `.git/info/exclude`,
+  which is **not** fingerprinted — then re-push the OTA.
+- **Permanent fix:** add a **`.fingerprintignore`** (same glob syntax as `.gitignore`, at repo
+  root) listing non-native files that must never affect the runtime (e.g. `.gitignore`). This
+  changes the baseline hash, so it must ship **with a new build** (binary + OTAs adopt the stable
+  hash together), not as a standalone OTA.
+
 ## Delivery & apply timing
 
 `checkAutomatically: 'ON_LOAD'` + the default `fallbackToCacheTimeout: 0` means: the app
