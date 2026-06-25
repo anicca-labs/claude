@@ -337,15 +337,35 @@ function extToContentType(ext) {
   return map[ext?.toLowerCase()] ?? 'application/octet-stream'
 }
 
-async function uploadFile(localPath, storagePath, contentType) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+// MUST retry like the prune step does: Supabase Storage intermittently returns 504/429
+// under load, and a single failed asset upload here aborts the WHOLE push — leaving one
+// platform half-published (a mismatched OTA). Retry 5xx/429 + network errors with
+// backoff; fail fast on 4xx.
+async function uploadFile(localPath, storagePath, contentType, tries = 5) {
   const body = fs.readFileSync(localPath)
-  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${storagePath}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY, 'Content-Type': contentType, 'x-upsert': 'true' },
-    body,
-  })
-  if (!res.ok) throw new Error(`Storage upload failed [${storagePath}]: ${res.status} ${await res.text()}`)
-  console.log(`  uploaded ${storagePath}`)
+  let lastErr
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    let res
+    try {
+      res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${storagePath}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: SERVICE_ROLE_KEY, 'Content-Type': contentType, 'x-upsert': 'true' },
+        body,
+      })
+    } catch (err) {
+      lastErr = err // network error — retry
+      if (attempt < tries) { await sleep(500 * 2 ** (attempt - 1)); continue }
+      throw lastErr
+    }
+    if (res.ok) { console.log(`  uploaded ${storagePath}`); return }
+    const text = await res.text()
+    if (res.status < 500 && res.status !== 429) throw new Error(`Storage upload failed [${storagePath}]: ${res.status} ${text}`)
+    lastErr = new Error(`Storage upload failed [${storagePath}]: ${res.status} ${text}`)
+    if (attempt < tries) await sleep(500 * 2 ** (attempt - 1))
+  }
+  throw lastErr
 }
 
 async function insertUpdate(row) {
