@@ -69,6 +69,25 @@ const getLocale = (): string => {
   return primary?.languageTag ?? primary?.languageCode ?? 'en-US'; // BCP-47, e.g. es-ES
 };
 
+// The recognizer only accepts locales it has a MODEL for — and that's a per-region list.
+// A real device tag like "es-AR" usually has no exact model, and iOS throws
+// "language-not-supported". Resolve the device tag to a supported variant of the SAME
+// language (es-AR → es-ES/es-US) before starting. Works for any language, not just Spanish.
+const resolveSupportedLocale = async (desired: string): Promise<string> => {
+  let locales: string[] = [];
+  try {
+    ({ locales } = await ExpoSpeechRecognitionModule.getSupportedLocales({}));
+  } catch {
+    // Android ≤12 returns empty (or throws without a service package) — can't validate.
+  }
+  if (!locales.length) return desired; // no list to check against; let the recognizer decide
+  if (locales.some((l) => l.toLowerCase() === desired.toLowerCase())) return desired; // exact (keep region)
+  const lang = desired.toLowerCase().split('-')[0];
+  const sameLang = locales.find((l) => l.toLowerCase().split('-')[0] === lang); // any region of the language
+  if (sameLang) return sameLang;
+  return locales.find((l) => l.toLowerCase().startsWith('en')) ?? locales[0]; // last resort
+};
+
 export const useVoiceToText = ({ onResult, onError, onPermissionDenied }: UseVoiceToTextOptions) => {
   const [isListening, setIsListening] = useState(false);
 
@@ -135,7 +154,10 @@ export const useVoiceToText = ({ onResult, onError, onPermissionDenied }: UseVoi
 
   useSpeechRecognitionEvent('error', (event) => {
     // Don't surface immediately — stash it and decide in `end` whether it was user-initiated.
-    pendingErrorRef.current = event.message ?? 'Speech recognition failed';
+    // Include event.error (the CODE, e.g. "language-not-supported") — on a release build
+    // that code is often the only way to diagnose without device logs, so don't discard it.
+    const code = event.error ? `[${event.error}] ` : '';
+    pendingErrorRef.current = `${code}${event.message ?? 'Speech recognition failed'}`;
   });
 
   const start = useCallback(async () => {
@@ -148,13 +170,21 @@ export const useVoiceToText = ({ onResult, onError, onPermissionDenied }: UseVoi
     const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!granted) return; // first denial — stay silent, don't redirect
 
-    ExpoSpeechRecognitionModule.start({
-      lang: getLocale(),            // or a user-chosen language (see Settings)
-      continuous: true,             // keep listening across pauses
-      interimResults: true,         // emit partial (non-final) transcripts as the user speaks
-      // volumeChangeEventOptions enables the 'volumechange' event for mic-level UI
-      volumeChangeEventOptions: { enabled: true, intervalMillis: 80 },
-    });
+    try {
+      // Resolve to a locale the recognizer actually has a model for (see resolveSupportedLocale).
+      const lang = await resolveSupportedLocale(getLocale()); // or a user-chosen language (see Settings)
+      ExpoSpeechRecognitionModule.start({
+        lang,
+        continuous: true,             // keep listening across pauses
+        interimResults: true,         // emit partial (non-final) transcripts as the user speaks
+        // volumeChangeEventOptions enables the 'volumechange' event for mic-level UI
+        volumeChangeEventOptions: { enabled: true, intervalMillis: 80 },
+      });
+    } catch (e) {
+      // A synchronous native throw (e.g. no recognition service) would otherwise be an
+      // unhandled rejection. Route it through onError so the user sees a real message.
+      onErrorRef.current?.(`start failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }, []);
 
   const stop = useCallback(() => {
@@ -183,7 +213,7 @@ const { isListening, start, stop } = useVoiceToText({
       return prev + separator + transcript;
     });
   },
-  onError: () => showToast('Voice recognition failed'),
+  onError: (message) => showToast(`Voice recognition failed: ${message}`), // show the code, don't swallow it
   onPermissionDenied: () =>
     Alert.alert(
       'Microphone access required',
@@ -208,11 +238,14 @@ useSpeechRecognitionEvent('volumechange', (event) => {
 ## Language / locale
 
 - Default to the device locale via `expo-localization` `getLocales()` (`getLocale()` above) — do not hardcode `en-US`, and do not read `NativeModules.SettingsManager` (iOS-only; see Gotchas).
+- **Validate the locale against the recognizer before `start`** (`resolveSupportedLocale` above). The device tag is region-specific (`es-AR`, `de-AT`, `fr-CA`) and the recognizer only ships models per region — `es-AR` typically has no model, so iOS throws `language-not-supported`. Query `getSupportedLocales()` and fall back to any variant of the same language (`es-AR` → `es-ES`/`es-US`). This is language-agnostic — only the region is dropped, and only when there's no exact match.
 - Pass a BCP-47 tag (`en-US`, `pt-BR`, `es-ES`) to `start({ lang })`. To let users override, persist their choice (reflect stores `voiceLanguage: string | null` in a Zustand preferences store; `null` = Auto/device locale) and read it at `start` time.
 
 ## Gotchas (encountered in reflect)
 
 - **"Auto" locale must come from `expo-localization`, not `NativeModules.SettingsManager`.** `SettingsManager` is iOS-only — on Android it's `undefined`, so `getLocale()` silently fell back to `en-US` and every Android device dictated in English. On iOS its `AppleLocale` is the *region*, not the language, so a Spanish phone set to a US region also dictated in English. Resolve the locale with `getLocales()[0].languageTag` (BCP-47, cross-platform), the same way the app detects locale for i18n/dates.
+- **The device locale's region may have no recognizer model → `language-not-supported`.** Once `getLocale()` correctly returned the real tag `es-AR`, iOS rejected it: the recognizer ships per-region models and has no `es-AR`. Don't pass the raw device tag — run it through `resolveSupportedLocale` (query `getSupportedLocales()`, fall back to a same-language variant). Note `getSupportedLocales()` returns `[]` on Android ≤12, so treat an empty list as "can't validate, pass the tag through."
+- **Don't swallow the `error` event message.** A generic "Voice recognition failed" toast hides the code (`language-not-supported`, `service-not-allowed`, …). On a release/full build with no logs, surfacing `event.error` + `event.message` in the toast is the fastest way to diagnose — and it's OTA-deliverable, so you don't need a rebuild to see what's wrong.
 - **iOS double-fires the final result.** On `stop()`, iOS emits the same `isFinal` transcript twice. Dedup by comparing against the last committed final (`lastFinalRef`) — otherwise the last phrase is inserted twice.
 - **Android restarts internally without end/start.** With `continuous: true`, after a natural pause the Android engine begins a fresh cumulative transcript. There's no `end`/`start` event — detect it by the new interim transcript being *shorter* than the tracked one, then append instead of overwrite.
 - **Distinguish user-stop from real errors.** `stop()` can surface as an `error` event. Stash errors in a ref and only report them in `end` when `userStoppedRef` is false — otherwise every normal stop looks like a failure.
@@ -225,6 +258,8 @@ useSpeechRecognitionEvent('volumechange', (event) => {
 
 - Always check `getPermissionsAsync()` before `requestPermissionsAsync()` — branch on `canAskAgain` for the Settings deep-link path.
 - Never hardcode `en-US`; default to the device locale and allow a persisted override.
+- Always resolve the locale against `getSupportedLocales()` before `start` — the device's region (`es-AR`) often has no model; fall back to a same-language variant rather than letting it throw `language-not-supported`.
+- Surface the `error` event's code + message to the user (at least on stg); never show a generic-only failure toast — the code is your only diagnostic on a release build.
 - Set `continuous: true` + `interimResults: true` for live dictation; commit on `isFinal`, preview on interim.
 - Dedup iOS final results (compare to last final) and detect Android internal restarts (shorter interim) — both are required for correct cross-platform appending.
 - Stash `error` events and decide in `end` whether to surface them, so intentional stops aren't reported as failures.
