@@ -48,7 +48,7 @@ The module exposes `ExpoSpeechRecognitionModule` (imperative start/stop/permissi
 
 ```ts
 import { useState, useRef, useCallback } from 'react';
-import { NativeModules } from 'react-native';
+import { getLocales } from 'expo-localization';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 
 type UseVoiceToTextOptions = {
@@ -61,11 +61,12 @@ type UseVoiceToTextOptions = {
 };
 
 const getLocale = (): string => {
-  const deviceLocale =
-    NativeModules.SettingsManager?.settings?.AppleLocale ??
-    NativeModules.SettingsManager?.settings?.AppleLanguages?.[0] ??
-    'en-US';
-  return deviceLocale.replace('_', '-'); // BCP-47, e.g. en-US
+  // Use expo-localization — it reads the device's preferred language list cross-platform
+  // and returns BCP-47 tags. Do NOT use NativeModules.SettingsManager: it's iOS-only
+  // (undefined on Android → always 'en-US') and its AppleLocale is the *region*, not the
+  // language, so a Spanish phone set to a US region would dictate in English.
+  const [primary] = getLocales();
+  return primary?.languageTag ?? primary?.languageCode ?? 'en-US'; // BCP-47, e.g. es-ES
 };
 
 export const useVoiceToText = ({ onResult, onError, onPermissionDenied }: UseVoiceToTextOptions) => {
@@ -206,11 +207,12 @@ useSpeechRecognitionEvent('volumechange', (event) => {
 
 ## Language / locale
 
-- Default to the device locale (`getLocale()` above) — do not hardcode `en-US`.
+- Default to the device locale via `expo-localization` `getLocales()` (`getLocale()` above) — do not hardcode `en-US`, and do not read `NativeModules.SettingsManager` (iOS-only; see Gotchas).
 - Pass a BCP-47 tag (`en-US`, `pt-BR`, `es-ES`) to `start({ lang })`. To let users override, persist their choice (reflect stores `voiceLanguage: string | null` in a Zustand preferences store; `null` = Auto/device locale) and read it at `start` time.
 
 ## Gotchas (encountered in reflect)
 
+- **"Auto" locale must come from `expo-localization`, not `NativeModules.SettingsManager`.** `SettingsManager` is iOS-only — on Android it's `undefined`, so `getLocale()` silently fell back to `en-US` and every Android device dictated in English. On iOS its `AppleLocale` is the *region*, not the language, so a Spanish phone set to a US region also dictated in English. Resolve the locale with `getLocales()[0].languageTag` (BCP-47, cross-platform), the same way the app detects locale for i18n/dates.
 - **iOS double-fires the final result.** On `stop()`, iOS emits the same `isFinal` transcript twice. Dedup by comparing against the last committed final (`lastFinalRef`) — otherwise the last phrase is inserted twice.
 - **Android restarts internally without end/start.** With `continuous: true`, after a natural pause the Android engine begins a fresh cumulative transcript. There's no `end`/`start` event — detect it by the new interim transcript being *shorter* than the tracked one, then append instead of overwrite.
 - **Distinguish user-stop from real errors.** `stop()` can surface as an `error` event. Stash errors in a ref and only report them in `end` when `userStoppedRef` is false — otherwise every normal stop looks like a failure.
