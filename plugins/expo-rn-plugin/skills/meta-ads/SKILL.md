@@ -125,6 +125,21 @@ EXPO_PUBLIC_FB_CLIENT_TOKEN  # Settings → Advanced → Security → Client Tok
 - Both: open + background the app (forces FBSDK to flush) → `Activate App` lands in the **Events Manager dataset** within ~10–20 min (Activity view; Test Events is faster).
 - The "Update your Facebook SDK" dashboard warning is driven by the SDK version Meta has *seen in events* — it lags 24–48h and self-clears. `react-native-fbsdk-next` 13.x pins native FBSDK 18, far above the iOS-14.5 threshold.
 
+## Real-world gotchas (learned the hard way)
+
+- **Client Token ≠ App Secret.** The app uses the **Client Token** (App settings → Advanced → Security). The **App Secret** (Basic) is server-side only — never bundle it. If it's ever pasted/exposed, **reset it** (Basic → Reset); nothing in the app uses it.
+- **Only Device ID is "tracking."** In App Store Connect **App Privacy** and Play **Data Safety**, the *only* data type with Tracking = Yes is **Device ID** (IDFA/GAID). Do **not** mark Name, Email, User ID, or usage data as used-for-tracking — over-declaring is inaccurate and mismatches the SDK manifests. Everything else is Linked + App Functionality/Analytics, Tracking = No.
+- **Connect the app to the ad account before building a campaign.** Business Settings → Accounts → Apps → select the app → **Connect ad accounts**. Otherwise the campaign app-picker errors "app not connected to your ad account," and pasting the store URL won't help (that flow is only for apps Meta doesn't already know).
+- **iOS rejection reasons are hidden.** An "Invalid Binary" status is terse with no inline reason. The **ITMS-#### code arrives in a separate email to the account-holder inbox** (not always the submitter's) and/or shows as a warning on the TestFlight build — check those, not just the status.
+- **iPhone/iPad Store ID = the App Store numeric ID** (same value for both on a universal app — the `id…` in the App Store URL). The **Android key hash** is only for Facebook Login — skip it for ads/attribution.
+
+## Running the campaign (durable bits only — Ads Manager UI changes often)
+
+- **Separate iOS and Android campaigns.** iOS needs the **iOS 14+ campaign** toggle **ON** (required to serve iOS 14.5+ and wire SKAdNetwork); Android needs it **OFF**. One campaign can't do both well.
+- **iOS attribution → Apple SKAdNetwork** for install objectives (captures the ATT-denied majority; Meta's own attribution undercounts). Android has no such toggle — standard attribution window.
+- **To promote an existing Reel/post** ("Use existing post," which keeps the post's social proof), **Dynamic Creative** and **Advantage+ Catalog** must be **OFF** — both are incompatible with existing posts.
+- **Target by monetization, not just language.** Optimizing for installs in cheap markets trains delivery toward non-payers. For a subscription app, start in high-willingness-to-pay markets the app is localized for.
+
 ## Notes
 
 - Native change → full build required (fingerprint runtimeVersion); not OTA-able.
