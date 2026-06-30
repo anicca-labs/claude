@@ -73,6 +73,44 @@ For creates: `onSuccess` + `setQueryData` is sufficient. The `useFocusEffect` `r
 
 For deletes and updates: `invalidateQueries` in `onSettled` is safe because the mutation completes before `onSettled` fires, and the data was already removed/changed server-side by then.
 
+## Transient network retry (iOS `-1005`)
+
+iOS intermittently drops a reused keep-alive socket, surfacing as `NSURLErrorNetworkConnectionLost` (`-1005`) — `fetch` rejects with `"The network connection was lost."`. It hits hardest on the **first request after a fresh install**, which is exactly what App Review does — they get a hard failure at the login screen that you cannot reproduce (your connections are already warm). This **rejected a Reflect build under Guideline 2.1**.
+
+Supabase's auth and DB calls use the client's `fetch`, which has no retry by default — a single blip becomes an error shown to the user. Wrap `fetch` once at client init so retries cover auth **and** data calls transparently:
+
+```ts
+const TRANSIENT_NETWORK_ERRORS = [
+  'network connection was lost',
+  'network request failed',
+  'the request timed out',
+  'connection appears to be offline',
+]
+
+const fetchWithRetry: typeof fetch = async (input, init) => {
+  let lastError: unknown
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await fetch(input, init)
+    } catch (err) {
+      lastError = err
+      const message = (err instanceof Error ? err.message : String(err)).toLowerCase()
+      if (!TRANSIENT_NETWORK_ERRORS.some((m) => message.includes(m))) throw err
+      await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)))
+    }
+  }
+  throw lastError
+}
+
+const supabase = createClient(serverUrl, apiKey, {
+  auth: { /* … */ },
+  db: { schema: 'api' },
+  global: { fetch: fetchWithRetry },
+})
+```
+
+Only the listed transient messages retry (3 attempts, 300/600ms backoff) — genuine errors (invalid credentials, etc.) still surface immediately. Extract `fetchWithRetry` into its own module so it's unit-testable without the native client: assert a request that throws `"The network connection was lost"` once is retried and succeeds, and that a non-transient error is not retried. It's a JS-only change (native fingerprint unchanged), so it ships as an OTA update.
+
 ## Cache key convention
 
 Use a `const` tuple so TypeScript catches mismatches across hooks:
