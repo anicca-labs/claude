@@ -41,6 +41,8 @@ const useCreateJournalEntry = () => {
 
 ### Updates and deletes — use `onMutate` for optimistic updates
 
+> **Needs to work offline too?** This `onMutate` + `onError` revert + `onSettled` invalidate form is *online-only*. Offline it's unsafe — the `onError` revert and a reconnect refetch undo the change — and the [offline-sync](../offline-sync/SKILL.md) skill's durable-outbox pattern replaces it.
+
 For mutations where you already know the full new state (deletes, field updates, toggles), optimistic updates via `onMutate` are safe because no id changes:
 
 ```ts

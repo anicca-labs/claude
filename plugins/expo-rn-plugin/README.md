@@ -299,6 +299,7 @@ All skills are invoked with the full `/expo-rn-plugin:<name>` prefix.
 | `feature-flags`          | Feature flags via Firebase Remote Config — naming conventions, per-environment values, gradual rollouts, and reading values in the app                                         |
 | `push-notifications`     | FCM push notifications — setup, token registration, permission flow, daily reminders, and MCP tooling (`inspect_push_tokens`, `send_test_push`)                                |
 | `ota`                    | Self-hosted OTA updates via Supabase — Edge Function manifest server, upload script, CI workflow, Doppler config. No EAS Update subscription needed.                           |
+| `offline-sync`           | Offline-first CRUD — durable MMKV outbox for creates/deletes/edits surviving airplane mode, refetch races, and restart, syncing on reconnect.                                  |
 | `upgrade-sdk`            | Expo SDK major-upgrade playbook — deps/patches, expo-router/react-navigation migration, stale-dev-client crash, and native verification                                        |
 
 ### Project commands (standalone, no skill file)
