@@ -75,6 +75,49 @@ const tap = Gesture.Tap()
 - Never read `.value` on the JS thread inside render — only inside `useAnimatedStyle` or `runOnJS` callbacks
 - Prefer built-in presets (`FadeIn`, `SlideInRight`, `ZoomIn`) over custom worklets for standard transitions
 - Durations: enter 200–300 ms, exit 100–200 ms, spring stiffness 120–180 for snappy feel
+- **Don't keep an animated overlay persistently mounted at the root** — conditionally render it (see the Fabric gotcha below). A persistent reanimated sibling of the navigator can crash during navigation.
+
+### Fabric gotcha: don't keep an animated overlay mounted at the root
+
+On the new architecture (Fabric), a persistent reanimated view mounted high in
+the tree — e.g. a status/offline banner rendered as a sibling of the navigator
+and merely translated off-screen when idle — can crash with:
+
+```
+IllegalStateException: The specified child already has a parent
+  → addViewAt: failed to insert view [x] into parent [y] at index 0
+  (culprit: ReactClippingViewManager)
+```
+
+It fires when the surface re-mounts on a **navigation or native-activity
+transition** (pushing a screen, "continue as guest", or returning from a native
+activity like Google Sign-In): Fabric replays the mount items and races on the
+always-present animated sibling. The crash class simply won't appear until you
+add that persistent root-level animated view — then it's intermittent and hard
+to reproduce.
+
+Fix: **conditionally mount overlays — render `null` when there's nothing to
+show** so the view is absent from the tree during those transitions, and let the
+enter/exit animation run only when it's actually needed:
+
+```tsx
+// ❌ persistent: mounted even when idle, just slid off-screen — reparented on transitions
+<Animated.View style={[styles.banner, offscreenWhenIdleStyle]} />
+
+// ✅ conditional: absent from the tree while idle; enter/exit runs only on the state change
+if (mode === 'hidden') return null;
+return (
+  <Animated.View entering={enter} exiting={exit} pointerEvents="none" style={styles.banner}>
+    …
+  </Animated.View>
+);
+```
+
+Bonus: because the enter/exit now runs only on the state change that reveals the
+overlay (never during navigation), you also avoid a class of "flash then crash"
+on resume. For a top strip, prefer a **custom worklet** that slides exactly the
+banner's own height — the built-in `SlideInUp`/`SlideOutUp` travel a full window
+height, so a 30 px strip snaps in only at the very end.
 
 ## Rive
 

@@ -235,6 +235,29 @@ unsynced writing after a long absence. Instead:
 | Bookmark/edit reverts on reconnect (or won't stick offline) | Same — value cleared on write-success/failure | Same |
 | Created entry flashes then vanishes until a re-render | Dequeued on insert-success; a refetch that raced the insert drops it from cache | Keep queued until a read confirms its id (§6) |
 | One user sees another's queued entries | Outbox wiped on sign-out / not keyed to an owner | Owner-keyed outbox + flush guard (§7) |
+| Crash on navigation / "continue as guest" / sign-in return: "child already has a parent" | A persistent animated **offline/status banner** at the root is reparented by Fabric on the transition | Conditionally mount the banner (render `null` while online) — see the **animations** skill's Fabric gotcha |
+
+## Optional: a network-status banner
+
+A top strip that shows "No connection" (red, persistent) while offline and a
+brief green "Back online" on reconnect is a nice reassurance layer over the
+outbox. Three things that aren't obvious:
+
+- **Conditionally mount it** — render `null` while online, not an off-screen
+  mounted view. A persistent animated view at the root crashes on Fabric during
+  navigation/sign-in transitions (see the **animations** skill). This also means
+  the enter/exit slide only runs on a real network change.
+- **Drive it off a full-state NetInfo subscriber**, not the offline→online *edge*
+  subscriber you use to flush the outbox. The banner needs the current state on
+  every change (`NetInfo.addEventListener` + an initial `NetInfo.fetch()`), plus
+  a `wasOnline` ref so the green "Back online" only fires after a real
+  disconnect (not on a normal online cold start).
+- **Toasts are separate from the banner.** `burnt` (iOS) and `ToastAndroid`
+  (Android) render in native windows *above* all RN views — the banner's
+  `zIndex` never covers them, and vice-versa. Don't try to reconcile their
+  stacking. And pin any banner label to `numberOfLines={1}`: a short strip clips
+  a wrapped second line, so "Back online" can render as just "Back" under large
+  font-scaling.
 
 ## Shipping it: OTA + backend compatibility
 
