@@ -1,6 +1,6 @@
 {
   "name": "expo-rn-plugin",
-  "version": "1.2.31",
+  "version": "1.2.32",
   "description": "Claude Code plugin for React Native / Expo projects. Provides MCP servers, scaffolding, Figma sync, i18n review, and TypeScript code intelligence. Supports Supabase, Firebase, and REST backends.",
   "author": {
     "name": "Mariano Ksairi",
