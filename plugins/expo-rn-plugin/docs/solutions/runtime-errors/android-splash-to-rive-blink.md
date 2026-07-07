@@ -22,7 +22,7 @@ tags:
 
 A brief visual blink (blank gap) appears on Android between the native splash screen and the Rive animation start. This affects **all Android versions** — confirmed on Android 11 and Android 12+.
 
-iOS shows no blink with the exact same Rive file and `@ksairi-org/react-native-splash-view` setup.
+iOS shows no blink with the exact same Rive file and `@anicca-labs/react-native-splash-view` setup.
 
 ## Root cause
 
@@ -40,7 +40,7 @@ iOS fades the native splash *over* the Rive `Animated.View` — the two overlap 
 - **Using a different animation library** — The issue is not Rive-specific; it would affect Lottie or any JS-rendered animation.
 - **Using a smarter model / cleverer JS approach** — This is a hard platform constraint, not a code logic problem.
 
-## Current mitigations (in `@ksairi-org/react-native-splash-view`)
+## Current mitigations (in `@anicca-labs/react-native-splash-view`)
 
 The package applies two mitigations that reduce the visible gap:
 
@@ -66,5 +66,5 @@ Not available in managed Expo workflow.
 
 ## References
 
-- `@ksairi-org/react-native-splash-view` v0.1.9 — `SplashView.tsx` `handlePlay` comment documents this limitation
+- `@anicca-labs/react-native-splash-view` v0.1.9 — `SplashView.tsx` `handlePlay` comment documents this limitation
 - Android `SplashScreen.setOnExitAnimationListener` docs: https://developer.android.com/reference/android/window/SplashScreen#setOnExitAnimationListener(android.window.SplashScreen.OnExitAnimationListener)

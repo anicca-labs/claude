@@ -12,7 +12,7 @@ A major SDK bump (e.g. 55 → 56) is a **native upgrade**, not a dependency twea
 ## Sequence
 
 1. **Bump core:** `yarn add expo@^<major>` then `yarn expo install --fix`. This aligns native modules but **skips some devDeps** — bump these manually: `jest-expo`, `eslint-config-expo`, `expo-build-properties`, `@types/react`.
-2. **Re-port `yarn patch` patches** against the new version. The patch protocol string is version-pinned (`patch:expo-updates@npm%3A55.0.24#…`); run `yarn patch <pkg>`, re-apply the same hunks to the new source, `yarn patch-commit`, delete the stale patch file. (Only third-party packages use `yarn patch` — never `@ksairi-org/*`; fix those at source.)
+2. **Re-port `yarn patch` patches** against the new version. The patch protocol string is version-pinned (`patch:expo-updates@npm%3A55.0.24#…`); run `yarn patch <pkg>`, re-apply the same hunks to the new source, `yarn patch-commit`, delete the stale patch file. (Only third-party packages use `yarn patch` — never `@anicca-labs/*`; fix those at source.)
 3. **Update `resolutions` / pinned ranges** to the new SDK version (e.g. `expo-constants`).
 4. **TypeScript 6:** set `ignoreDeprecations: "6.0"` in tsconfig (the `baseUrl` deprecation hard-errors otherwise).
 5. **Verify static:** `tsc --noEmit`, `expo-doctor` (expect N/N), `jest`, `lint`.

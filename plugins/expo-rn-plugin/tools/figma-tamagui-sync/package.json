@@ -1,5 +1,5 @@
 {
-  "name": "@ksairi-org/figma-tamagui-generator",
+  "name": "@anicca-labs/figma-tamagui-generator",
   "version": "0.1.0",
   "description": "Sync Figma Variables to Tamagui design tokens",
   "type": "module",

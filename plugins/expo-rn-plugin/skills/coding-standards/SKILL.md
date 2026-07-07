@@ -5,7 +5,7 @@ description: Load coding standards and conventions for this React Native / Expo 
 
 Apply the following standards to all code in this project.
 
-> If this project uses `@ksairi-org/*` libraries, run `/expo-rn-plugin:libs` before writing any utility, hook, or layout code — those packages replace many standard alternatives.
+> If this project uses `@anicca-labs/*` libraries, run `/expo-rn-plugin:libs` before writing any utility, hook, or layout code — those packages replace many standard alternatives.
 
 ## Reference implementation — check this FIRST
 
@@ -122,16 +122,16 @@ The compiler auto-memoizes — prefer plain, direct code and let it optimize:
 Always resolve UI needs from the highest available source before reaching for lower ones:
 
 1. **project-local** — atoms, molecules, organisms in this project's own codebase (e.g. `@atoms`, `@molecules`, `@organisms`)
-2. **`@ksairi-org/`** — shared org packages; covers buttons, touchables, images, screen containers, forms, auth
+2. **`@anicca-labs/`** — shared org packages; covers buttons, touchables, images, screen containers, forms, auth
 3. **tamagui** — layout and text primitives: `XStack`, `YStack`, `Text`, `Spinner`, `Stack`, …
-4. **`react-native`** — only when no Tamagui or `@ksairi-org/` equivalent exists
+4. **`react-native`** — only when no Tamagui or `@anicca-labs/` equivalent exists
 5. **Third-party libraries** — last resort
 
-Never import `View`, `Text`, `TouchableOpacity`, `Pressable`, or `Image` from `react-native` when a Tamagui or `@ksairi-org/` wrapper covers the use case.
+Never import `View`, `Text`, `TouchableOpacity`, `Pressable`, or `Image` from `react-native` when a Tamagui or `@anicca-labs/` wrapper covers the use case.
 
-### When to push a component to `@ksairi-org/`
+### When to push a component to `@anicca-labs/`
 
-Before adding a new component to the project-local layers, ask: **would any other app on this stack benefit from this?** If yes, and it has no app-specific tokens, data, or business logic, push it to `@ksairi-org/libs` instead and consume it remotely. Examples that belong upstream: generic wrappers around third-party primitives (`KeyboardScrollView`), shared layout primitives, utility hooks. This rule only applies when you are a member of the `ksairi-org` GitHub org and the consuming project already uses `@ksairi-org/*` packages.
+Before adding a new component to the project-local layers, ask: **would any other app on this stack benefit from this?** If yes, and it has no app-specific tokens, data, or business logic, push it to `@anicca-labs/libs` instead and consume it remotely. Examples that belong upstream: generic wrappers around third-party primitives (`KeyboardScrollView`), shared layout primitives, utility hooks. This rule only applies when you are a member of the `ksairi-org` GitHub org and the consuming project already uses `@anicca-labs/*` packages.
 
 ### Project-local component layers
 
@@ -141,12 +141,12 @@ Organize project-local shared components into three layers and place new compone
 - **molecules** — multi-part units with a single concern, composed from atoms: form fields (label + input + error), card items, list rows, empty-state views, search bars, notification banners
 - **organisms** — full UI sections composing multiple molecules, may hold local state: forms, lists with loading/empty/data states, complex modals, navigation bars, onboarding steps
 
-### Screen containers (`@ksairi-org/ui-containers`)
+### Screen containers (`@anicca-labs/ui-containers`)
 
 Every screen must use `Containers.Screen` as its root element. It handles safe area insets automatically (via `useSafeAreaInsets`) so you never need `SafeAreaView` directly. react-navigation adjusts the inset context per navigator, so the all-edges default is self-correcting — no double-padding inside a Stack with a header or inside a Tabs screen.
 
 ```tsx
-import { Containers } from '@ksairi-org/ui-containers'
+import { Containers } from '@anicca-labs/ui-containers'
 
 // Screen with its own ScrollView/KeyboardScrollView
 <Containers.Screen shouldAutoResize={false}>
@@ -165,16 +165,16 @@ import { Containers } from '@ksairi-org/ui-containers'
 - `edges` prop (default all four) — override only when you need to exclude specific edges
 - `shouldAutoResize={false}` — required when the screen already contains its own `ScrollView`
 
-**Buttons specifically** — `@ksairi-org/ui-button` takes priority over Tamagui's `Button`. Never use Tamagui's raw `Button` or react-native touchables for interactive buttons:
+**Buttons specifically** — `@anicca-labs/ui-button` takes priority over Tamagui's `Button`. Never use Tamagui's raw `Button` or react-native touchables for interactive buttons:
 
-- Primary full-width action with Tamagui theme tokens → `BaseTouchable` from `@ksairi-org/ui-touchables` with `bg="$token"` — **not** `CTAButton`. `CTAButton` uses `unstyled={true}` on Tamagui's `Button` and the `background` prop does not reliably resolve theme tokens; `BaseTouchable` with `bg` does. Use `opacity={disabled ? 0.4 : 1}` for the disabled visual state and an inline `{loading ? <Spinner /> : children}` guard.
+- Primary full-width action with Tamagui theme tokens → `BaseTouchable` from `@anicca-labs/ui-touchables` with `bg="$token"` — **not** `CTAButton`. `CTAButton` uses `unstyled={true}` on Tamagui's `Button` and the `background` prop does not reliably resolve theme tokens; `BaseTouchable` with `bg` does. Use `opacity={disabled ? 0.4 : 1}` for the disabled visual state and an inline `{loading ? <Spinner /> : children}` guard.
 - Primary full-width action with explicit hex/rgba colors → `CTAButton` (pass `backgroundColor` as a literal color string, not a `$token`; has `loading` prop and `spinnerColor`)
 - Secondary action → `BasicButton` (full `ButtonProps` pass-through, `opacity=0.4` when disabled)
 - Text-only / link-style → `GhostButton` (transparent background, `opacity=0.4` when disabled; pass `color` from your theme)
 - Icon-only → `IconButton` (circular, requires `icon: ReactNode`, full `ButtonProps` pass-through)
 - Custom layout or icons → `BaseButton` (accepts `leftIcon`/`rightIcon`)
-- Spring-animated with auto-width → `SizingAnimatedButton` from `@ksairi-org/ui-button-animated` (`backgroundColor` required; measures its own width internally)
-- Spring-animated with explicit width → `AnimatedButton` from `@ksairi-org/ui-button-animated` (`backgroundColor` and `width: number` both required; prefer `SizingAnimatedButton` unless you need explicit width control)
+- Spring-animated with auto-width → `SizingAnimatedButton` from `@anicca-labs/ui-button-animated` (`backgroundColor` required; measures its own width internally)
+- Spring-animated with explicit width → `AnimatedButton` from `@anicca-labs/ui-button-animated` (`backgroundColor` and `width: number` both required; prefer `SizingAnimatedButton` unless you need explicit width control)
 
 ## i18n (Lingui)
 
@@ -686,7 +686,7 @@ Edge functions are Deno — exclude them from the React Native tsconfig or `tsc`
 
 ### Excluding functions from the OpenAPI spec
 
-The `@ksairi-org/react-query-sdk` spec generator scans every subdirectory of `supabase/functions/` and generates OpenAPI 3.0 entries for each. When merged with the Supabase REST spec (Swagger 2.0), the version mismatch causes orval validation to fail.
+The `@anicca-labs/react-query-sdk` spec generator scans every subdirectory of `supabase/functions/` and generates OpenAPI 3.0 entries for each. When merged with the Supabase REST spec (Swagger 2.0), the version mismatch causes orval validation to fail.
 
 **Every edge function must start with `// @openapi-internal` unless it is explicitly a typed client API endpoint that should appear in the generated React Query SDK.** In practice, all functions in this project use `// @openapi-internal` — cron jobs, webhooks, admin tools, push senders, device-facing custom protocols (e.g. OTA manifest), and dev helpers all qualify.
 
@@ -932,24 +932,24 @@ For Android, the `ios.simulator` flag is ignored — `development` would work fo
 - `stg` uses `releaseStatus: "completed"` — without it, the AAB is uploaded to the artifact library but no release is created, requiring a manual step in the Play Console.
 - `prd` uses `releaseStatus: "draft"` — production releases should be manually reviewed in the Play Console before going live (set rollout %, check release notes, confirm everything).
 
-## `@ksairi-org` library publishing
+## `@anicca-labs` library publishing
 
-`@ksairi-org/*` packages live in the `ksairi-libs` monorepo. CI publishes automatically on push to `main` — never publish manually unless the CI workflow is broken.
+`@anicca-labs/*` packages live in the `anicca-labs/libs` monorepo. CI publishes automatically on push to `main` — never publish manually unless the CI workflow is broken.
 
 **Workflow for fixing a library bug:**
 
 1. Patch `node_modules` locally to validate the fix in the consuming app
-2. Apply the same fix to the library source in `ksairi-libs`
+2. Apply the same fix to the library source in `anicca-labs/libs`
 3. Bump the version in `package.json`
 4. Push to `main` — CI publishes and the fix is live
 
-Do **not** use `yarn patch` (Yarn Berry's patch mechanism) for `@ksairi-org/*` packages — that's for third-party libraries you don't control. Fix the source instead.
+Do **not** use `yarn patch` (Yarn Berry's patch mechanism) for `@anicca-labs/*` packages — that's for third-party libraries you don't control. Fix the source instead.
 
 **npm auth token** — store in `~/.yarnrc.yml` (global, never committed):
 
 ```yaml
 npmScopes:
-  "@ksairi-org":
+  "@anicca-labs":
     npmRegistryServer: "https://registry.npmjs.org"
     npmAuthToken: npm_xxx
 ```

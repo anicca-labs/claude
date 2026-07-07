@@ -328,9 +328,9 @@ node -e "
   add('deploy-store-all', 'yarn deploy-store-android && yarn deploy-store-ios');
   add('deploy-store-all:prd', 'ENV=prd yarn deploy-store-all');
   add('generate:open-api-spec',
-    "bash -c 'mkdir -p node_modules/@ksairi-org/react-query-sdk/specs && EXPO_PUBLIC_SUPABASE_API_KEY=$(grep ^SUPABASE_SERVICE_ROLE_KEY= .env | cut -d= -f2-) node --env-file=.env node_modules/@ksairi-org/react-query-sdk/scripts/generate-open-api-spec.js'");
+    "bash -c 'mkdir -p node_modules/@anicca-labs/react-query-sdk/specs && EXPO_PUBLIC_SUPABASE_API_KEY=$(grep ^SUPABASE_SERVICE_ROLE_KEY= .env | cut -d= -f2-) node --env-file=.env node_modules/@anicca-labs/react-query-sdk/scripts/generate-open-api-spec.js'");
   add('generate:open-api-hooks',
-    'yarn generate:open-api-spec && node --env-file=.env node_modules/.bin/orval --config node_modules/@ksairi-org/react-query-sdk/orval.config.ts');
+    'yarn generate:open-api-spec && node --env-file=.env node_modules/.bin/orval --config node_modules/@anicca-labs/react-query-sdk/orval.config.ts');
   add('test', 'jest --watchAll=false');
   add('test:watch', 'jest');
   add('format', 'prettier --write .');
@@ -419,7 +419,7 @@ node -e "
   const openApiSpec = pkg.scripts['generate:open-api-spec'];
   if (openApiSpec && !openApiSpec.includes('SUPABASE_SERVICE_ROLE_KEY')) {
     pkg.scripts['generate:open-api-spec'] =
-      "bash -c 'mkdir -p node_modules/@ksairi-org/react-query-sdk/specs && EXPO_PUBLIC_SUPABASE_API_KEY=$(grep ^SUPABASE_SERVICE_ROLE_KEY= .env | cut -d= -f2-) node --env-file=.env node_modules/@ksairi-org/react-query-sdk/scripts/generate-open-api-spec.js'";
+      "bash -c 'mkdir -p node_modules/@anicca-labs/react-query-sdk/specs && EXPO_PUBLIC_SUPABASE_API_KEY=$(grep ^SUPABASE_SERVICE_ROLE_KEY= .env | cut -d= -f2-) node --env-file=.env node_modules/@anicca-labs/react-query-sdk/scripts/generate-open-api-spec.js'";
     console.log('   Patched: generate:open-api-spec now uses service role key for spec download');
     changed = true;
   }
@@ -429,7 +429,7 @@ node -e "
   const openApiHooks = pkg.scripts['generate:open-api-hooks'];
   if (openApiHooks && !openApiHooks.includes('--env-file=.env')) {
     pkg.scripts['generate:open-api-hooks'] =
-      'yarn generate:open-api-spec && node --env-file=.env node_modules/.bin/orval --config node_modules/@ksairi-org/react-query-sdk/orval.config.ts';
+      'yarn generate:open-api-spec && node --env-file=.env node_modules/.bin/orval --config node_modules/@anicca-labs/react-query-sdk/orval.config.ts';
     console.log('   Patched: generate:open-api-hooks now passes --env-file=.env to orval');
     changed = true;
   }
@@ -681,12 +681,12 @@ fi
 unset _pkg _missing_dev_pkgs
 
 for _pkg in \
-            "@ksairi-org/expo-image" \
-            "@ksairi-org/react-auth-client" "@ksairi-org/react-auth-core" \
-            "@ksairi-org/react-auth-hooks" "@ksairi-org/react-auth-setup" "@ksairi-org/react-auth-storage" \
-            "@ksairi-org/react-form" \
-            "@ksairi-org/react-query-sdk" \
-            "@ksairi-org/react-native-splash-view" \
+            "@anicca-labs/expo-image" \
+            "@anicca-labs/react-auth-client" "@anicca-labs/react-auth-core" \
+            "@anicca-labs/react-auth-hooks" "@anicca-labs/react-auth-setup" "@anicca-labs/react-auth-storage" \
+            "@anicca-labs/react-form" \
+            "@anicca-labs/react-query-sdk" \
+            "@anicca-labs/react-native-splash-view" \
             react-hook-form "@hookform/resolvers" \
             react-native-svg rive-react-native \
             "@react-native-firebase/app" "@react-native-firebase/analytics" "@react-native-firebase/messaging" \

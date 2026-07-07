@@ -28,7 +28,7 @@ module.exports = {
         "rive-react-native",
         "@stripe/stripe-react-native",
         "@dev-plugins/.*",
-        "@ksairi-org/.*",
+        "@anicca-labs/.*",
       ].join("|") +
       ")",
   ],

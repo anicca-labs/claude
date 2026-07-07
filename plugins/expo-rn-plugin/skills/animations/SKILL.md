@@ -138,10 +138,10 @@ Use state machines for interactive Rive animations — pass `stateMachineName` a
 
 ### Splash screen pattern
 
-For the app splash screen, use `@ksairi-org/react-native-splash-view` (wraps `rive-react-native`) in `app/_layout.tsx`:
+For the app splash screen, use `@anicca-labs/react-native-splash-view` (wraps `rive-react-native`) in `app/_layout.tsx`:
 
 ```tsx
-import { SplashView } from "@ksairi-org/react-native-splash-view";
+import { SplashView } from "@anicca-labs/react-native-splash-view";
 import { Platform } from "react-native";
 import splash from "../assets/animations/splash.riv";
 

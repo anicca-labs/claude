@@ -20,7 +20,7 @@ description: Regenerate OpenAPI hooks and explain the orval codegen workflow
 
 ## Where generated files live
 
-- Config: `node_modules/@ksairi-org/react-query-sdk/orval.config.ts`
+- Config: `node_modules/@anicca-labs/react-query-sdk/orval.config.ts`
 - Output: wherever `orval.config.ts` points (typically `src/api/generated/`)
 
 ## Rules
