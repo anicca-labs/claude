@@ -261,10 +261,10 @@ When the plugin is installed at **project scope** (the default for app repos, re
 
 ```bash
 # 1. Refresh the marketplace catalog from its source
-claude plugin marketplace update ksairi-org
+claude plugin marketplace update anicca-labs
 
 # 2. Update the plugin at the SAME scope it was installed (project for app repos)
-claude plugin update expo-rn-plugin@ksairi-org --scope project
+claude plugin update expo-rn-plugin@anicca-labs --scope project
 
 # 3. Restart Claude Code — the plugin is loaded at session start,
 #    so the running session keeps the old version until you reload.
@@ -272,7 +272,7 @@ claude plugin update expo-rn-plugin@ksairi-org --scope project
 
 Verify the active version with `claude plugin list`.
 
-**Manual fallback** (if the CLI can't resolve, e.g. offline): the marketplace fetch lands a copy under `~/.claude/plugins/cache/ksairi-org/expo-rn-plugin/<version>/`. Point the project's entry in `~/.claude/plugins/installed_plugins.json` at that path — update `installPath`, `version`, and `gitCommitSha` (the marketplace HEAD from `git -C ~/.claude/plugins/marketplaces/ksairi-org rev-parse HEAD`) — then restart.
+**Manual fallback** (if the CLI can't resolve, e.g. offline): the marketplace fetch lands a copy under `~/.claude/plugins/cache/anicca-labs/expo-rn-plugin/<version>/`. Point the project's entry in `~/.claude/plugins/installed_plugins.json` at that path — update `installPath`, `version`, and `gitCommitSha` (the marketplace HEAD from `git -C ~/.claude/plugins/marketplaces/anicca-labs rev-parse HEAD`) — then restart.
 
 > Distinct from [Updating existing apps](#updating-existing-apps) below, which covers propagating plugin changes into an app already built from it.
 
@@ -488,8 +488,8 @@ When the plugin updates, apps built from it don't auto-update. Apply changes man
 
 Reference implementations for patterns not covered here:
 
-- [ksairi-org/reflect](https://github.com/ksairi-org/reflect) — journaling/content (OTA, push reminders, streaks, i18n)
-- [ksairi-org/virtual-wallet](https://github.com/ksairi-org/virtual-wallet) — fintech/payments (Stripe, RevenueCat, multi-currency)
+- [anicca-labs/reflect](https://github.com/anicca-labs/reflect) — journaling/content (OTA, push reminders, streaks, i18n)
+- [anicca-labs/virtual-wallet](https://github.com/anicca-labs/virtual-wallet) — fintech/payments (Stripe, RevenueCat, multi-currency)
 
 ## Project CLAUDE.md
 

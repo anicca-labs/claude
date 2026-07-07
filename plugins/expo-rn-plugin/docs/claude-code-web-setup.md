@@ -22,11 +22,11 @@ The web container starts fresh every session and, importantly, sets `SKIP_PLUGIN
   {
     "enableAllProjectMcpServers": true,
     "extraKnownMarketplaces": {
-      "ksairi-org": {
-        "source": { "source": "github", "repo": "ksairi-org/claude" }
+      "anicca-labs": {
+        "source": { "source": "github", "repo": "anicca-labs/claude" }
       }
     },
-    "enabledPlugins": { "expo-rn-plugin@ksairi-org": true }
+    "enabledPlugins": { "expo-rn-plugin@anicca-labs": true }
   }
   ```
 

@@ -19,10 +19,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/ksairi-org/claude.git",
+    "url": "https://github.com/anicca-labs/claude.git",
     "directory": "plugins/expo-rn-plugin"
   },
-  "homepage": "https://github.com/ksairi-org/claude/tree/main/plugins/expo-rn-plugin#readme",
+  "homepage": "https://github.com/anicca-labs/claude/tree/main/plugins/expo-rn-plugin#readme",
   "files": [
     ".claude-plugin/",
     "agents/",

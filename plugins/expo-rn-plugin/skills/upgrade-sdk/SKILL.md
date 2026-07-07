@@ -7,7 +7,7 @@ description: Upgrade an Expo SDK major version reliably (deps, patches, native r
 
 A major SDK bump (e.g. 55 → 56) is a **native upgrade**, not a dependency tweak. Static checks (tsc/lint/jest) pass while the app fails to build or boot — so the work isn't done until a dev client is rebuilt **and** the bundle compiles **and** the app boots on a simulator.
 
-> Check the reference apps (`ksairi-org/reflect`, `ksairi-org/virtual-wallet`) `package.json` / `app.config.ts` / `eas.json` for a known-good post-upgrade state before starting.
+> Check the reference apps (`anicca-labs/reflect`, `anicca-labs/virtual-wallet`) `package.json` / `app.config.ts` / `eas.json` for a known-good post-upgrade state before starting.
 
 ## Sequence
 

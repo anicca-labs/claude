@@ -11,8 +11,8 @@ Apply the following standards to all code in this project.
 
 Before debugging a build error, adding a package, or configuring anything native, check the reference apps — production apps built on this exact stack:
 
-- **[ksairi-org/reflect](https://github.com/ksairi-org/reflect)** — journaling/content focus; OTA updates, push reminders, streaks, i18n
-- **[ksairi-org/virtual-wallet](https://github.com/ksairi-org/virtual-wallet)** — fintech/payments focus; Stripe, RevenueCat IAP, multi-currency
+- **[anicca-labs/reflect](https://github.com/anicca-labs/reflect)** — journaling/content focus; OTA updates, push reminders, streaks, i18n
+- **[anicca-labs/virtual-wallet](https://github.com/anicca-labs/virtual-wallet)** — fintech/payments focus; Stripe, RevenueCat IAP, multi-currency
 
 **Rules:**
 
@@ -131,7 +131,7 @@ Never import `View`, `Text`, `TouchableOpacity`, `Pressable`, or `Image` from `r
 
 ### When to push a component to `@anicca-labs/`
 
-Before adding a new component to the project-local layers, ask: **would any other app on this stack benefit from this?** If yes, and it has no app-specific tokens, data, or business logic, push it to `@anicca-labs/libs` instead and consume it remotely. Examples that belong upstream: generic wrappers around third-party primitives (`KeyboardScrollView`), shared layout primitives, utility hooks. This rule only applies when you are a member of the `ksairi-org` GitHub org and the consuming project already uses `@anicca-labs/*` packages.
+Before adding a new component to the project-local layers, ask: **would any other app on this stack benefit from this?** If yes, and it has no app-specific tokens, data, or business logic, push it to `@anicca-labs/libs` instead and consume it remotely. Examples that belong upstream: generic wrappers around third-party primitives (`KeyboardScrollView`), shared layout primitives, utility hooks. This rule only applies when you are a member of the `anicca-labs` GitHub org and the consuming project already uses `@anicca-labs/*` packages.
 
 ### Project-local component layers
 

@@ -1,15 +1,15 @@
 {
   "enableAllProjectMcpServers": true,
   "extraKnownMarketplaces": {
-    "ksairi-org": {
+    "anicca-labs": {
       "source": {
         "source": "github",
-        "repo": "ksairi-org/claude"
+        "repo": "anicca-labs/claude"
       }
     }
   },
   "enabledPlugins": {
-    "expo-rn-plugin@ksairi-org": true
+    "expo-rn-plugin@anicca-labs": true
   },
   "permissions": {
     "allow": [

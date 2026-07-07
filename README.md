@@ -10,7 +10,7 @@ Mariano Ksairi's Claude Code configuration — marketplace plugins, global hooks
 
 ## Reference implementation
 
-[virtual-wallet](https://github.com/ksairi-org/virtual-wallet) is the canonical example app that exercises the `expo-rn-plugin`. It's a production React Native / Expo project (Supabase auth, REST SDK, Firebase push) and serves as the integration test bed for this plugin.
+[virtual-wallet](https://github.com/anicca-labs/virtual-wallet) is the canonical example app that exercises the `expo-rn-plugin`. It's a production React Native / Expo project (Supabase auth, REST SDK, Firebase push) and serves as the integration test bed for this plugin.
 
 Shared libraries extracted from it live in [anicca-labs/libs](https://github.com/anicca-labs/libs) — a Turborepo + Changesets monorepo publishing 18 packages under the `@anicca-labs/*` npm scope. New projects that adopt the plugin can install any of these packages independently.
 

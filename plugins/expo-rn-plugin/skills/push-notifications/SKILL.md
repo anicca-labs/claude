@@ -338,7 +338,7 @@ RLS: owner policy on `user_id = auth.uid()`.
 If it returns 404, GitHub Pages has been disabled on the repo. Re-enable with:
 
 ```bash
-gh api repos/ksairi-org/reflect/pages \
+gh api repos/anicca-labs/reflect/pages \
   --method POST \
   --field "source[branch]=main" \
   --field "source[path]=/docs"

@@ -63,8 +63,8 @@ Run `/expo-rn-plugin:coding-standards` to load full standards. Quick pointers:
 
 Build error, native config question, or adding a package → check the reference apps **before** any other investigation. If neither needs a workaround, you don't either.
 
-- [ksairi-org/reflect](https://github.com/ksairi-org/reflect) — journaling/content (OTA, push reminders, streaks, i18n)
-- [ksairi-org/virtual-wallet](https://github.com/ksairi-org/virtual-wallet) — fintech/payments (Stripe, RevenueCat, multi-currency)
+- [anicca-labs/reflect](https://github.com/anicca-labs/reflect) — journaling/content (OTA, push reminders, streaks, i18n)
+- [anicca-labs/virtual-wallet](https://github.com/anicca-labs/virtual-wallet) — fintech/payments (Stripe, RevenueCat, multi-currency)
 
 ## Splash screen assets (designer spec)
 
