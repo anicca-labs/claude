@@ -64,7 +64,8 @@ jobs:
       - name: Export JS bundle
         run: doppler run --project mobile --config ${{ steps.env.outputs.channel }} -- yarn expo export --platform ios --platform android --output-dir dist
         env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          # Config-scoped service tokens, one per env; select by resolved channel.
+          DOPPLER_TOKEN: ${{ steps.env.outputs.channel == 'prd' && secrets.DOPPLER_TOKEN_PROD || secrets.DOPPLER_TOKEN }}
 
       - name: Push OTA update to Supabase
         run: |
@@ -74,4 +75,4 @@ jobs:
                      EXPO_RUNTIME_VERSION=$RUNTIME_VERSION \
                      node scripts/push-ota-update.mjs"
         env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          DOPPLER_TOKEN: ${{ steps.env.outputs.channel == 'prd' && secrets.DOPPLER_TOKEN_PROD || secrets.DOPPLER_TOKEN }}

@@ -217,9 +217,17 @@ The workflow templates (`.github/workflows/`) wire up automatic deploys: push to
 
 | Secret | Where to get it |
 | --- | --- |
-| `EXPO_TOKEN` | expo.dev → Account Settings → Access Tokens |
-| `DOPPLER_TOKEN` | Doppler → project → Access → Service Tokens |
+| `EXPO_TOKEN` | expo.dev → Account Settings → Access Tokens (prefer an **org-level** GitHub secret — shared across repos) |
+| `DOPPLER_TOKEN` | Doppler → project → Access → Service Tokens — scoped to the **`stg`** config |
+| `DOPPLER_TOKEN_PROD` | Doppler → project → Access → Service Tokens — scoped to the **`prd`** config |
 | `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Google Cloud → Service Accounts → JSON key (EAS submit role only) |
+
+> **Doppler tokens — use one config-scoped *service* token per environment, never a personal token.**
+> A Doppler service token (`dp.st.<config>.…`) is bound to a single project+config, so a single
+> secret can't serve both stg and prd. The deploy/OTA workflows select automatically:
+> `DOPPLER_TOKEN` for stg, `DOPPLER_TOKEN_PROD` for prd
+> (`${{ inputs.environment == 'prd' && secrets.DOPPLER_TOKEN_PROD || secrets.DOPPLER_TOKEN }}`).
+> Personal tokens (`dp.pt.…`) are tied to a user account and grant broad access — don't put them in CI.
 
 iOS Apple auth needs **no secret** when the App Store Connect API key is stored on
 EAS (the recommended setup above) — CI authenticates with the key via `EXPO_TOKEN`.

@@ -75,5 +75,7 @@ jobs:
         run: yarn deploy-store-android
         env:
           ENV: ${{ inputs.environment }}
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          # Config-scoped Doppler service tokens, one per env (DOPPLER_TOKEN = stg,
+          # DOPPLER_TOKEN_PROD = prd). Never use a personal token in CI.
+          DOPPLER_TOKEN: ${{ inputs.environment == 'prd' && secrets.DOPPLER_TOKEN_PROD || secrets.DOPPLER_TOKEN }}
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

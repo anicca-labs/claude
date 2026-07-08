@@ -694,7 +694,8 @@ jobs:
       - name: Export JS bundle
         run: doppler run --project mobile --config ${{ steps.env.outputs.channel }} -- yarn expo export --platform ios --platform android --output-dir dist
         env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          # config-scoped service token per env: DOPPLER_TOKEN (stg) / DOPPLER_TOKEN_PROD (prd)
+          DOPPLER_TOKEN: ${{ steps.env.outputs.channel == 'prd' && secrets.DOPPLER_TOKEN_PROD || secrets.DOPPLER_TOKEN }}
       - name: Push OTA update
         # The script computes the per-platform runtimeVersion via the fingerprint (no
         # EXPO_RUNTIME_VERSION) under this same Doppler env, so it matches the store build.
@@ -702,7 +703,8 @@ jobs:
           doppler run --project mobile --config ${{ steps.env.outputs.channel }} -- \
             bash -c "EXPO_UPDATE_CHANNEL=${{ steps.env.outputs.channel }} node scripts/push-ota-update.mjs"
         env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          # config-scoped service token per env: DOPPLER_TOKEN (stg) / DOPPLER_TOKEN_PROD (prd)
+          DOPPLER_TOKEN: ${{ steps.env.outputs.channel == 'prd' && secrets.DOPPLER_TOKEN_PROD || secrets.DOPPLER_TOKEN }}
 ```
 
 ## package.json scripts
