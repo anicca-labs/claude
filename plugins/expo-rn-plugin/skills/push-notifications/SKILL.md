@@ -218,6 +218,32 @@ Hard-won rules for the tap→navigate flow:
 - **Keep the navigation synchronous.** If the target screen consumes-and-clears the pending id the moment it opens (common when it's always mounted), deferring the navigation (`InteractionManager.runAfterInteractions`, `setTimeout`) lets the clear re-run the effect and cancel the deferred navigate before it fires → the tab/route switch never lands. Call `router.push(...)` directly in the effect body.
 - With `expo-router` Material Top Tabs + `lazy: false`, the target tab's screen is mounted even when unfocused — it can open its modal in the background, so the *only* missing piece is the tab switch. Don't rely on the unfocused screen's side effect to also switch tabs.
 
+## Server-push (FCM) tap deep-linking — a *separate* channel
+
+Everything above handles **local** notifications (expo-notifications' response listener). **Server pushes (FCM) arrive on a different channel** and are easy to miss: on a remote FCM tap, `expo-notifications`' `addNotificationResponseReceivedListener` does **not** reliably surface the data payload. Use `@react-native-firebase/messaging`:
+
+```ts
+import { getMessaging, onNotificationOpenedApp, getInitialNotification } from '@react-native-firebase/messaging'
+import { getApp } from '@react-native-firebase/app'
+
+const messaging = getMessaging(getApp())
+const onFcmTap = (msg: { data?: { [k: string]: string | object } } | null) => {
+  if (msg?.data?.type === 'daily-reminder') setPendingCompose(true)   // RECORD only — navigate from an effect
+}
+const unsub = onNotificationOpenedApp(messaging, onFcmTap)   // warm (background → foreground)
+getInitialNotification(messaging).then(onFcmTap)             // cold (tap launched a killed app)
+return () => unsub()
+```
+
+Wire this **alongside** the expo local-notification listener whenever the *same* action can be triggered by both a local notification (e.g. guests' on-device reminder) and a server push (signed-in users' FCM reminder). Key both on the same `data.type` and funnel into the same "record → navigate from an effect" store flag.
+
+Hard-won rules:
+
+- **The SENDER must attach `data`, or the tap does nothing — silently.** This is the #1 landmine and cost a full debugging session. A message with only `notification: { title, body }` and **no** `data` arrives on tap as `data = {}`, so `data?.type` is `undefined` and the handler no-ops: the app opens but never navigates. **Every** "go here" push must include the payload — the cron/edge function (FCM v1 `message.data`) **and** any admin/manual console send. Audit the *server* side, not just the client handler.
+- **FCM `data` values must be strings.** `{ type: 'daily-reminder' }` is fine; numbers/nested objects get dropped or coerced.
+- **On iOS, one FCM tap fires BOTH channels.** The expo response listener fires with `data = null` (it doesn't surface the FCM payload) *and* RNFirebase's handler fires with the real `data`. So on iOS you **cannot** read the FCM payload from the expo channel — rely on the RNFirebase handler for server pushes. The overlap is harmless when both just set the same idempotent flag.
+- **Diagnose handler-vs-payload with an on-device alert.** When a tap "does nothing," you can't tell whether the handler didn't fire or the data was empty. Temporarily `Alert.alert('tap', JSON.stringify(msg?.data ?? null))` at the top of each handler (expo + FCM). One tap tells you everything: no alert → handler not firing; `{}`/`null` → the *sender* isn't attaching `data`; correct `type` but no nav → it's the navigation target/timing (see the synchronous-navigate rule above). Strip the alerts once located.
+
 ## Scheduling batches without duplicates
 
 For data-driven scheduled notifications (e.g. N days of "memories" derived from a list), the scheduling effect re-runs on every data refetch (new array reference), so a naive "already scheduled today" guard performs a read-modify-write across many `await`s and **races → double-schedules**. Make the scheduler concurrency-safe:
