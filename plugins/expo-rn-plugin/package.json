@@ -1,6 +1,6 @@
 {
   "name": "@anicca-labs/expo-rn-plugin",
-  "version": "1.2.35",
+  "version": "1.2.36",
   "description": "Claude Code plugin for React Native / Expo projects. MCP servers, scaffolding, Figma sync, i18n review, and TypeScript code intelligence. Supports Supabase, Firebase, and REST backends.",
   "author": "Mariano Ksairi <marianoksairi@gmail.com>",
   "license": "MIT",
