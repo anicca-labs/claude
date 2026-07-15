@@ -333,15 +333,17 @@ These commands are copied to `.claude/commands/` by `setup-app.sh` and are avail
 | `auth-specialist`     | Opus  | Supabase auth flows, Google/Apple sign-in, token lifecycle                   |
 | `payment-specialist`  | Opus  | Stripe PaymentSheet, PCI compliance, webhooks                                |
 | `conventions-reviewer`| Opus  | Reviews a diff against project conventions (Tamagui tokens, Zustand ownership, Lingui, React Query read-after-write, offline outbox) — run before merging stg → main |
-| `refactor-runner`     | Fable | Long-horizon, mostly-autonomous refactors and Expo SDK upgrades that span many files and minutes — kick off and check back |
+| `refactor-runner`     | inherit | Long-horizon, mostly-autonomous refactors and Expo SDK upgrades that span many files and minutes — kick off and check back |
 
-Models are declared as **aliases** (`fable` / `opus` / `haiku`), not pinned snapshots, so
-agents track the latest model automatically. Reasoning-heavy agents (auth, database,
-payment, conventions-reviewer) run on Opus with the `effort` field as the depth/cost dial;
-mechanical agents (scaffolder, i18n) stay on Haiku. The `refactor-runner` runs on **Fable**
-for sustained multi-hour agentic work — reach for it on SDK bumps and codebase-wide
-migrations, not small edits (it's slower and pricier for routine work). Opus fast mode
-(`/fast`) speeds up the interactive scaffold and Figma loops without downgrading the model.
+Models are declared as **aliases** (`opus` / `haiku`), not pinned snapshots, so agents
+track the latest model automatically. Reasoning-heavy agents (auth, database, payment,
+conventions-reviewer) run on Opus with the `effort` field as the depth/cost dial; mechanical
+agents (scaffolder, i18n) stay on Haiku. The `refactor-runner` pins **no** model — it
+inherits the session's model so it never hard-fails on a plan without a given tier. For
+sustained multi-hour runs it's best on **Fable 5**: invoke it with `/model fable` if your
+plan includes it; otherwise it runs on your default (Opus for most) — still works, just less
+capable on the longest tasks. Opus fast mode (`/fast`) speeds up the interactive scaffold and
+Figma loops without downgrading the model.
 
 ### MCP Servers
 
