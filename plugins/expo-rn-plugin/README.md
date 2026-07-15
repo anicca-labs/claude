@@ -332,12 +332,16 @@ These commands are copied to `.claude/commands/` by `setup-app.sh` and are avail
 | `i18n-reviewer`       | Haiku | Audit Lingui catalogs for missing translations and hardcoded strings         |
 | `auth-specialist`     | Opus  | Supabase auth flows, Google/Apple sign-in, token lifecycle                   |
 | `payment-specialist`  | Opus  | Stripe PaymentSheet, PCI compliance, webhooks                                |
+| `conventions-reviewer`| Opus  | Reviews a diff against project conventions (Tamagui tokens, Zustand ownership, Lingui, React Query read-after-write, offline outbox) — run before merging stg → main |
+| `refactor-runner`     | Fable | Long-horizon, mostly-autonomous refactors and Expo SDK upgrades that span many files and minutes — kick off and check back |
 
-Models are declared as **aliases** (`opus` / `haiku`), not pinned snapshots, so agents
-track the latest model automatically. Reasoning-heavy agents (auth, database, payment) run
-on Opus with the `effort` field as the depth/cost dial; mechanical agents (scaffolder,
-i18n) stay on Haiku. Opus fast mode (`/fast`) speeds up the interactive scaffold and Figma
-loops without downgrading the model.
+Models are declared as **aliases** (`fable` / `opus` / `haiku`), not pinned snapshots, so
+agents track the latest model automatically. Reasoning-heavy agents (auth, database,
+payment, conventions-reviewer) run on Opus with the `effort` field as the depth/cost dial;
+mechanical agents (scaffolder, i18n) stay on Haiku. The `refactor-runner` runs on **Fable**
+for sustained multi-hour agentic work — reach for it on SDK bumps and codebase-wide
+migrations, not small edits (it's slower and pricier for routine work). Opus fast mode
+(`/fast`) speeds up the interactive scaffold and Figma loops without downgrading the model.
 
 ### MCP Servers
 
@@ -373,6 +377,7 @@ where the marketplace plugin isn't installed.
 | `PostToolUse` (Write/Edit) | `tsc-check.sh`               | Runs `tsc --noEmit` after edits to TypeScript/JS files (skips markdown, JSON, and assets)             |
 | `PreCompact`               | `precompact-state.sh`        | Re-surfaces unapplied Supabase migrations into context so they survive a compaction                   |
 | `Stop`                     | `context-warning.sh`         | Warns when context window ≥ 70% — prompts for `/compact`                                              |
+| `Stop`                     | `verify-ui-preview.sh`       | If UI source files changed but weren't visually verified, blocks once and prompts to run the `preview` skill (loop-guarded; skips non-visual changes) |
 
 ### Monitors (automatic)
 
