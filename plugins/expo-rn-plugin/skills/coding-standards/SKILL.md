@@ -543,25 +543,43 @@ if (s?.user) {
 
 ### `device_tokens` table schema
 
-One row per user — `unique(user_id)`. If the user reinstalls the app they get a new FCM token; upserting on `user_id` updates the row in place rather than accumulating stale tokens.
+**One row per device** — `unique(fcm_token)`, upsert on `fcm_token`. One user legitimately has
+several devices; keying on `user_id` would collapse them so only the last-signed-in device gets
+push. `user_id` is **nullable** so guests are tracked before they sign in (the row is *claimed* on
+sign-in). Include the engagement columns (`last_active_at`, `locale`, `timezone`) from this first
+migration — they're impossible to backfill, so a column added later silently loses all prior
+history. See the `push-notifications` skill for the full rationale and the registration code.
 
 ```sql
 create table api.device_tokens (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  fcm_token text not null,
+  user_id uuid references auth.users(id) on delete cascade,  -- nullable: guest devices, claimed on sign-in
+  fcm_token text not null unique,                            -- conflict target; one row per device
+  firebase_project_id text not null default 'your-firebase-project',  -- which project minted the token
+  reminder_enabled boolean not null default false,           -- explicit toggle ≠ "no time set"
   reminder_hour int,        -- local time (null = no reminder)
   reminder_minute int,
-  timezone text,            -- IANA string e.g. "America/New_York"
-  updated_at timestamptz not null default now(),
-  unique (user_id)
+  timezone text,            -- IANA string e.g. "America/New_York" — fire in the device's local time
+  locale text,              -- device locale e.g. "es-AR" — localize server pushes
+  last_active_at timestamptz,  -- last app-open: retention, winback eligibility, ad-cohort activity
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 alter table api.device_tokens enable row level security;
 grant select, insert, update, delete on api.device_tokens to authenticated;
 grant select, insert, update, delete on api.device_tokens to service_role;
-create policy "Users can manage their own device tokens"
-  on api.device_tokens for all
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Per-command policies (not one blanket FOR ALL): a guest row (user_id IS NULL) must be
+-- readable/insertable, and sign-in must be able to CLAIM it (user_id NULL -> auth.uid()).
+create policy device_tokens_select_own on api.device_tokens for select
+  using (auth.uid() = user_id or user_id is null);
+create policy device_tokens_insert_own on api.device_tokens for insert
+  with check (auth.uid() = user_id or user_id is null);
+create policy device_tokens_update_own_or_claim on api.device_tokens for update
+  using (auth.uid() = user_id or user_id is null)
+  with check (auth.uid() = user_id or user_id is null);
+create policy device_tokens_delete_own on api.device_tokens for delete
+  using (auth.uid() = user_id);
 ```
 
 ### Permission status vs permission request
@@ -647,7 +665,7 @@ useEffect(() => {
 
 ### Notification permissions do NOT belong in the backend
 
-The OS silently drops notifications to users who have denied permission — the backend never needs to know. Store only `fcm_token`, `reminder_hour`, `reminder_minute`, and `timezone`. When the user disables a reminder in-app, set those three fields to `null`; the edge function skips rows with no reminder set.
+The OS silently drops notifications to users who have denied permission — the backend never needs to know the *permission* state. Do still store the delivery + engagement columns (`fcm_token`, `reminder_*`, `timezone`, `locale`, `last_active_at`). When the user disables a reminder in-app, set `reminder_enabled = false` and the reminder fields to `null`; the edge function skips rows with no reminder set.
 
 ### Syncing reminder preferences
 
@@ -656,10 +674,12 @@ Always include `timezone` (IANA string) when syncing reminder time so the server
 ```ts
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 await supabase.from('device_tokens').upsert(
-  { user_id, fcm_token, reminder_hour: enabled ? hour : null,
+  { user_id, fcm_token, reminder_enabled: enabled,
+    reminder_hour: enabled ? hour : null,
     reminder_minute: enabled ? minute : null,
-    timezone: enabled ? timezone : null, updated_at: new Date().toISOString() },
-  { onConflict: 'user_id' },
+    timezone, last_active_at: new Date().toISOString(),
+    updated_at: new Date().toISOString() },
+  { onConflict: 'fcm_token' },   // one row per device — see the table schema note above
 )
 ```
 

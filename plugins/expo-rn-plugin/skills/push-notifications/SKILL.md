@@ -274,21 +274,46 @@ export function scheduleMemories(entries, title, hour = 9, minute = 0): Promise<
 
 ## Token registration (`src/services/user-devices/index.ts`)
 
-Save the FCM token to `device_tokens` after permission is granted and on every sign-in:
+Save the FCM token to `device_tokens` after permission is granted and on every sign-in. Populate
+the engagement columns on the same write — `userId` is optional so guests are tracked too, and
+`last_active_at` is stamped every call so a plain app-open keeps the row fresh:
 
 ```ts
 import { supabase } from '@services/supabase'
 import { getFCMToken } from '@firebase-messaging'
+import { getLocales, getCalendars } from 'expo-localization'
 
-export async function upsertDeviceToken(userId: string): Promise<void> {
+// userId omitted → a guest row (user_id NULL); sign-in later claims it.
+export async function upsertDeviceToken(userId?: string): Promise<void> {
   const fcmToken = await getFCMToken()
   if (!fcmToken) return
+  const now = new Date().toISOString()
   await supabase.from('device_tokens').upsert(
-    { user_id: userId, fcm_token: fcmToken, updated_at: new Date().toISOString() },
+    {
+      ...(userId ? { user_id: userId } : {}),
+      fcm_token: fcmToken,
+      locale: getLocales()[0]?.languageTag ?? null,          // e.g. "es-AR"
+      timezone: getCalendars()[0]?.timeZone ?? null,         // IANA, e.g. "America/Argentina/Buenos_Aires"
+      last_active_at: now,                                   // engagement signal — stamp every open
+      updated_at: now,
+    },
     { onConflict: 'fcm_token' },
   )
 }
+
+// Cheap "touch" for app-foreground when the token hasn't changed — keeps last_active_at live
+// so retention/winback queries stay accurate even between sign-ins.
+export async function touchDeviceActivity(): Promise<void> {
+  const fcmToken = await getFCMToken()
+  if (!fcmToken) return
+  await supabase.from('device_tokens')
+    .update({ last_active_at: new Date().toISOString() })
+    .eq('fcm_token', fcmToken)
+}
 ```
+
+Call `touchDeviceActivity()` from an `AppState` `active` listener so activity is recorded on every
+foreground, not only when the token or sign-in state changes.
 
 **Conflict target = `fcm_token`, not `user_id`** (the table needs a UNIQUE constraint on `fcm_token`). One user legitimately has multiple devices — `onConflict: 'user_id'` would collapse them to a single row, so the user'd only get push on their most-recently-signed-in device. Keying on `fcm_token` keeps one row per device and refreshes the row when the same device re-signs-in. Tradeoff: stale tokens from old devices accumulate (clean them up when FCM reports them unregistered, or on a TTL).
 
@@ -346,16 +371,39 @@ Run `inspect_push_tokens` — if the table is missing it will emit a ready-to-ru
 | column | type | notes |
 | --- | --- | --- |
 | `id` | uuid PK | `gen_random_uuid()` |
-| `user_id` | uuid FK → `auth.users` | ON DELETE CASCADE |
-| `fcm_token` | text | NOT NULL |
+| `user_id` | uuid FK → `auth.users` | **nullable** — see *guest tracking* below; ON DELETE CASCADE |
+| `fcm_token` | text | NOT NULL, UNIQUE (upsert conflict target) |
 | `platform` | text | `ios` / `android` / `web` |
+| `firebase_project_id` | text | NOT NULL default — supports multiple Firebase projects (which project minted the token; the sender picks creds by it) |
+| `reminder_enabled` | boolean | NOT NULL default `false` — explicit toggle, so "no reminder set" ≠ "reminder off" |
 | `reminder_hour` | int | nullable — set when reminder enabled |
 | `reminder_minute` | int | nullable |
-| `timezone` | text | nullable — IANA timezone string |
+| `timezone` | text | nullable — IANA string; needed to fire reminders/winbacks in the device's local time |
+| `locale` | text | nullable — device locale, so server pushes are localized (fallback English) |
+| `last_active_at` | timestamptz | nullable — last app-open; the core engagement signal (retention, winback eligibility, ad-cohort activity) |
 | `created_at` | timestamptz | `now()` |
 | `updated_at` | timestamptz | `now()`, kept current by moddatetime trigger |
 
-RLS: owner policy on `user_id = auth.uid()`.
+RLS: owner policy on `user_id = auth.uid()`. With nullable `user_id`, also allow a guest row
+(`user_id IS NULL`) to be read/claimed and let sign-in **claim** it (update `user_id` from NULL →
+`auth.uid()`) — split the blanket owner policy into per-command policies so the claim UPDATE passes.
+
+### Capture the engagement columns from day one (you can't backfill history)
+
+Add `last_active_at`, `locale`, `timezone`, and nullable `user_id` **in the first migration**, even
+before you build reminders or winback. The reason is asymmetric: a column you add later starts
+accumulating data only from that day — every user who was active before is invisibly lost. By the
+time you want to answer "which ad cohort is still active after 14 days?" or "who lapsed and should
+get a winback?", the months of history you needed were never written. These columns are cheap to
+carry and impossible to reconstruct, so default them into the schema:
+
+- **`last_active_at`** — touch it on every app foreground (a lightweight upsert, not just on token
+  change). It powers retention curves, winback targeting (`last_active_at < now() - 14d`), and
+  measuring whether paid-install cohorts actually stick — the numbers that tell you if ads work.
+- **`user_id` nullable (guest tracking)** — register a token even when signed out, so guests are
+  reachable by push/reminders and counted in activity. Claim the row to the user on sign-in.
+- **`locale` / `timezone`** — captured once, they let every future server push be localized and
+  time-correct without a schema change or a reach-back migration.
 
 ## Admin push test page
 
