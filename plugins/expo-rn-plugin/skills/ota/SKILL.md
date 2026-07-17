@@ -792,16 +792,53 @@ shipped build until it was reverted.
     syntax, repo root). The `expo-updates fingerprint:generate` CLI — which both the OTA push and
     the build use — honors it. Caveat: a `fingerprint.config.js` `ignorePaths` entry does **not**
     reliably drop `.gitignore`; use `.fingerprintignore` for files.
-  - **Content sources** (e.g. `contents:packageJson:scripts`) can't be path-ignored — skip them in
-    **`fingerprint.config.js`** with `sourceSkips: ['PackageJsonScriptsAll']`. Only skip scripts if
-    none affect the native build (no prebuild/postinstall hooks touching native; a JS-only
-    `postinstall` like `i18n:compile` is fine).
+  - **Content sources** (e.g. `contents:packageJson:scripts`, `contents:expoConfig`) can't be
+    path-ignored — skip them in **`fingerprint.config.js`** `sourceSkips`. Two common entries:
+    - `'PackageJsonScriptsAll'` — editing *any* npm script won't drift the hash. Only safe if no
+      script affects the native build (no prebuild/postinstall touching native; a JS-only
+      `postinstall` like `i18n:compile` is fine).
+    - `'ExpoConfigVersions'` — excludes `version` / `android.versionCode` / `ios.buildNumber` from
+      the hash, so a **marketing version bump** (e.g. `1.1.0 → 1.2.0`) no longer strands OTAs.
+      Without it, `version` is a fingerprint source and a bump silently moves the hash off every
+      installed build. Genuinely worth having — but **introduce it ONLY bundled with a full build**
+      (adding it re-hashes the baseline, so shipping it via OTA alone strands every current binary;
+      see the recovery recipe below for the incident that proved this).
   - Both **shift the baseline hash**, so they ship **with a new build** (binary + OTAs adopt the
     stable hash together), never as a standalone OTA. Decide the full skip set *before* that build
     so you don't need another rebuild to add more. Afterward, **verify** the build's CI `Resolved
     runtime version` equals `fingerprint:generate`'s hash (both must honor the same config).
   - Only exclude **truly** non-native files/sources — excluding a real native input would let an
     OTA ship to a binary that's missing that native change.
+
+### Recovering from a stranded fingerprint (a config change shipped via OTA)
+
+If a fingerprint-affecting change (`fingerprint.config.js` `sourceSkips`, `.gitignore`, a native
+config file) already went out **as an OTA rather than a build**, every installed binary is now on
+the *old* hash and receives nothing — new OTAs silently reach no one. Two ways out; revert-and-
+republish is almost always the right one:
+
+- **Revert the offending change** (working tree + commit), then **republish** so the push recomputes
+  the *old*, still-installed fingerprint. The OTA CI does **not** auto-fire on a
+  `fingerprint.config.js`-only change — that file isn't in the workflow's `paths` filter — so
+  trigger it manually per channel (`workflow_dispatch` sets both the Doppler config and the channel;
+  `--ref main → prd`, else `stg`):
+
+  ```bash
+  gh workflow run expo-ota-update.yml --ref stg  -f environment=stg   # republish stg
+  gh workflow run expo-ota-update.yml --ref main -f environment=prd   # republish prd
+  ```
+
+  Then confirm the new rows' `runtime_version` equals the installed builds' fingerprint (see
+  *Verifying what's live*). Re-introduce the config change later, **bundled with a real build**.
+- **Or roll forward** with new full builds of both platforms — but every device on the old build is
+  stranded until it updates through the store, so revert-and-republish is the faster unblock.
+
+> **Real incident:** adding `'ExpoConfigVersions'` to `sourceSkips` **via OTA** re-hashed the native
+> layer for both platforms (the marketing-version decouple is a good change — it was the *delivery*
+> that was wrong), stranding every install from all later OTAs. The reminder + biometric fixes
+> reached nobody in prod until the skip was reverted and both channels were `workflow_dispatch`-
+> republished at the original fingerprint. Lesson: a fingerprint-config change is a *build* event,
+> never an OTA.
 
 ## Delivery & apply timing
 
