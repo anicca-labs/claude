@@ -1,6 +1,6 @@
 # claude
 
-Mariano Ksairi's Claude Code configuration — marketplace plugins, global hooks, and tooling.
+Anicca Labs's Claude Code configuration — marketplace plugins, global hooks, and tooling.
 
 ## Plugins
 
