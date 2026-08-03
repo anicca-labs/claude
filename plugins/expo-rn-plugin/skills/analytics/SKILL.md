@@ -96,3 +96,29 @@ Never identify before auth completes. Clear on sign-out.
 ## Switching providers
 
 If the project uses PostHog or Amplitude instead of Firebase, ask for the relevant implementation pattern and it will be provided on demand.
+
+## Querying GA4 data programmatically (agent access)
+
+Firebase Analytics data lives in GA4 and is NOT reachable via the Firebase MCP or CLI —
+only the **Google Analytics Data API** exposes it. One-time setup per project:
+
+1. GCP console (the project behind Firebase) → enable **Google Analytics Data API**
+   (and **Google Analytics Admin API** if you want property auto-discovery).
+2. Create a service account — **no GCP IAM roles needed** — and download its JSON key.
+3. Google Analytics → Admin → **Property access management** → add the service-account
+   email as **Viewer**. (GA4 permissions live in Analytics, not GCP IAM.)
+4. Store in Doppler: `GA4_CLIENT_EMAIL`, `GA4_PRIVATE_KEY`, `GA4_PROPERTY_ID`
+   (numeric, from Admin → Property settings).
+
+Query with zero dependencies (JWT via openssl, stdlib HTTP) — reference implementation
+in reflect's `scripts/ga4-report.py`; run under `doppler run --config prd`. Core flow:
+
+```
+JWT{iss: client_email, scope: analytics.readonly, aud: oauth2.googleapis.com/token}
+  → sign RS256 with openssl → POST /token → access_token
+  → POST analyticsdata.googleapis.com/v1beta/properties/{ID}:runReport
+    {dateRanges, dimensions: [{name: "date"}], metrics: [{name: "activeUsers"}, ...]}
+```
+
+Useful metrics: `activeUsers`, `newUsers`, `dauPerMau`, `sessions`, `screenPageViews`.
+`activeUsers − newUsers` per day ≈ returning users (a practical retention floor).
