@@ -112,6 +112,11 @@ copy_if_missing "$PLUGIN_ROOT/templates/app.config.ts"                        "$
 for wf in "$PLUGIN_ROOT/templates/.github/workflows/"*.yml; do
   [ -f "$wf" ] && copy_if_missing "$wf" "$APP_ROOT/.github/workflows/$(basename "$wf")"
 done
+# The prd store workflow shells out to scripts/next-version.mjs to resolve the
+# marketing version — without it the release job fails at the first step.
+for s in "$PLUGIN_ROOT/templates/scripts/"*.mjs; do
+  [ -f "$s" ] && copy_if_missing "$s" "$APP_ROOT/scripts/$(basename "$s")"
+done
 for mf in "$PLUGIN_ROOT/templates/.maestro/"*.yaml; do
   [ -f "$mf" ] && copy_if_missing "$mf" "$APP_ROOT/.maestro/$(basename "$mf")"
 done

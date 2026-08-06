@@ -9,6 +9,11 @@ on:
       platform:
         required: true
         type: string
+      version:
+        description: 'Marketing version to build (X.Y.Z). Empty = use package.json as-is.'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   deploy-android:
@@ -18,6 +23,7 @@ jobs:
     with:
       environment: ${{ inputs.environment }}
       node-version: '23'
+      version: ${{ inputs.version }}
 
   deploy-ios:
     if: ${{ inputs.platform == 'ios' || inputs.platform == 'all' }}
@@ -26,3 +32,4 @@ jobs:
     with:
       environment: ${{ inputs.environment }}
       node-version: '23'
+      version: ${{ inputs.version }}

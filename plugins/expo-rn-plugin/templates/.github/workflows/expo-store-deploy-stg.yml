@@ -21,6 +21,11 @@ on:
           - all
           - ios
           - android
+      version:
+        description: 'Force marketing version X.Y.Z (empty = build package.json as-is)'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   detect-platform:
@@ -63,3 +68,8 @@ jobs:
     with:
       environment: stg
       platform: ${{ github.event_name == 'push' && needs.detect-platform.outputs.platform || inputs.platform }}
+      # stg deliberately does NOT auto-bump — test builds would burn marketing
+      # versions, and TestFlight/internal-track only require a unique build number.
+      # The version is resolved (and recorded) on the prd release. This input is the
+      # manual escape hatch for testing a specific version end to end.
+      version: ${{ inputs.version }}

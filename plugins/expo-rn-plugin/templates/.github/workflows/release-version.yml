@@ -1,0 +1,89 @@
+name: Release version (conventional commits)
+
+# Computes the next marketing version from conventional-commit subjects since the
+# last release and (optionally) commits the bump back to stg with [skip ci].
+#
+# NOTE: the prd store workflow resolves the version by itself (`resolve-version`), so
+# a normal release does NOT need this. Keep it as the out-of-band escape hatch — cut a
+# version without building, or preview what the commits resolve to (dry_run).
+#
+# Runs on stg to respect the stg-first / no-squash flow: the bump then reaches main
+# via the normal stg->main merge — CI never commits to main. Version is decoupled
+# from the OTA fingerprint (fingerprint.config.js skips ExpoConfigVersions), so a
+# bump is cosmetic/store-facing and never strands an OTA.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview only — do not commit the bump'
+        type: boolean
+        default: true
+      version:
+        description: 'Force an exact version X.Y.Z (empty = derive from conventional commits)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: stg
+          fetch-depth: 0 # full history so we can scan commits since the last release
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+
+      - id: resolve
+        # Free-text input via env, never interpolated into the shell source.
+        env:
+          FORCED: ${{ inputs.version }}
+        run: |
+          if [[ -n "$FORCED" ]]; then
+            node scripts/next-version.mjs --set "$FORCED" | tee /tmp/next-version.json
+          else
+            node scripts/next-version.mjs | tee /tmp/next-version.json
+          fi
+          {
+            echo "next=$(node -e "console.log(require('/tmp/next-version.json').next)")"
+            echo "level=$(node -e "console.log(require('/tmp/next-version.json').level)")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          echo "### Version resolve" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/next-version.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit bump
+        if: ${{ inputs.dry_run == false && steps.resolve.outputs.level != 'none' }}
+        env:
+          NEXT: ${{ steps.resolve.outputs.next }}
+        run: |
+          # --set with the already-resolved version, never a bare re-run: recomputing
+          # here would silently ignore a forced `version` input.
+          node scripts/next-version.mjs --set "$NEXT" --apply
+          # Forcing the version stg already carries writes nothing — `commit -am` would
+          # fail on an empty index. That's a no-op, not an error.
+          if git diff --quiet -- package.json; then
+            echo "package.json already at v$NEXT — nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(release): v$NEXT [skip ci]"
+          # ANNOTATED on purpose: `push --follow-tags` pushes ONLY annotated tags — a
+          # lightweight `git tag` here never leaves the runner and the remote silently
+          # ends up with no release tags at all. next-version.mjs prefers the latest v*
+          # tag as its scan base and would quietly fall back to "commit that last set
+          # this version", which is right only while history stays linear.
+          git tag -a "v$NEXT" -m "v$NEXT"
+          git push origin stg --follow-tags
