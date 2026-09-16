@@ -1,0 +1,91 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "schedule": ["every weekend"],
+  "timezone": "America/New_York",
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Next.js + React — update the framework atomically so the compiler, types, and eslint config never drift apart",
+      "groupName": "Next.js & React",
+      "matchPackageNames": [
+        "next",
+        "@next/*",
+        "eslint-config-next",
+        "react",
+        "react-dom",
+        "@types/react",
+        "@types/react-dom"
+      ],
+      "stabilityDays": 3,
+      "automerge": false
+    },
+    {
+      "description": "Tailwind — keep the core and the PostCSS/prettier plugins on the same version",
+      "groupName": "Tailwind CSS",
+      "matchPackageNames": ["tailwindcss", "@tailwindcss/*", "prettier-plugin-tailwindcss"],
+      "automerge": false
+    },
+    {
+      "description": "Supabase",
+      "groupName": "Supabase",
+      "matchPackageNames": ["@supabase/*"],
+      "automerge": false
+    },
+    {
+      "description": "Stripe — server SDK and browser SDK move together",
+      "groupName": "Stripe",
+      "matchPackageNames": ["stripe", "@stripe/*"],
+      "automerge": false
+    },
+    {
+      "description": "Sentry",
+      "groupName": "Sentry",
+      "matchPackageNames": ["@sentry/*"],
+      "automerge": false
+    },
+    {
+      "description": "TanStack Query",
+      "groupName": "TanStack Query",
+      "matchPackageNames": ["@tanstack/*"],
+      "automerge": false
+    },
+    {
+      "description": "TypeScript + types — safe to automerge patch/minor",
+      "groupName": "TypeScript & types",
+      "matchPackageNames": ["typescript", "@types/*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Patch-only updates for everything else — automerge safely",
+      "matchUpdateTypes": ["patch"],
+      "excludePackageNames": [
+        "next",
+        "@next/*",
+        "eslint-config-next",
+        "react",
+        "react-dom",
+        "tailwindcss",
+        "@tailwindcss/*",
+        "@supabase/*",
+        "stripe",
+        "@stripe/*",
+        "@sentry/*"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["on the first day of the month"]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  }
+}

@@ -1,0 +1,15 @@
+# Next.js build output
+.next/
+out/
+
+# Generated from the live schema — regenerated, never formatted by hand
+src/lib/database.types.ts
+
+# Doppler secret template — KEY={{ .VAR }} syntax is not valid YAML
+env.template.yaml
+
+# Build / test artifacts
+dist/
+coverage/
+playwright-report/
+test-results/

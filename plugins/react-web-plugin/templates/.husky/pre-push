@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+. "$(dirname "$0")/common.sh"
+
+# Quality gates — keep in sync with .github/workflows/quality-checks.yml
+yarn check:tsc
+yarn lint
+yarn format:check
+yarn test

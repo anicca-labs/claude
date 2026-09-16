@@ -12,6 +12,11 @@
       "name": "expo-rn-plugin",
       "source": "./plugins/expo-rn-plugin",
       "description": "Claude Code plugin for React Native / Expo projects. MCP servers, scaffolding, Figma sync, i18n review, and TypeScript code intelligence. Supports Supabase, Firebase, and REST backends."
+    },
+    {
+      "name": "react-web-plugin",
+      "source": "./plugins/react-web-plugin",
+      "description": "Claude Code plugin for React web projects — Next.js (App Router), TypeScript strict, Tailwind CSS v4, Supabase/Postgres, Stripe. Database MCP server, scaffolding, review agents, browser preview, and a two-layer implementer/reviewer agent workflow."
     }
   ]
 }

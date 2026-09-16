@@ -1,0 +1,34 @@
+{
+  "name": "react-web-plugin",
+  "version": "0.1.0",
+  "description": "Claude Code plugin for React web projects — Next.js (App Router), TypeScript strict, Tailwind CSS v4, Supabase/Postgres, Stripe, React Query, Sentry, Vitest, and Playwright. Provides a database MCP server, scaffolding, review agents, and browser preview for multi-tenant B2B dashboards.",
+  "author": {
+    "name": "Mariano Ksairi",
+    "email": "marianoksairi@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "nextjs",
+    "react",
+    "tailwind",
+    "database",
+    "typescript",
+    "supabase",
+    "stripe"
+  ],
+  "userConfig": {
+    "doppler_project": {
+      "title": "Doppler Project",
+      "description": "Doppler project name for secret management (e.g. my-app)",
+      "type": "string",
+      "sensitive": false
+    },
+    "doppler_config": {
+      "title": "Doppler Config",
+      "description": "Doppler config to use (dev / stg / prd, default: dev)",
+      "type": "string",
+      "sensitive": false
+    }
+  },
+  "dependencies": []
+}

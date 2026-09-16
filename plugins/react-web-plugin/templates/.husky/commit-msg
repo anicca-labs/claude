@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+. "$(dirname "$0")/common.sh"
+
+COMMIT_MSG_FILE=$1
+yarn commitlint --edit "$COMMIT_MSG_FILE"

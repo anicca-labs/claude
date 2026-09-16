@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+. "$(dirname "$0")/common.sh"
+
+# Format staged source files and re-stage them so the commit is always
+# prettier-clean (the pre-push hook and CI still gate with format:check).
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(tsx?|jsx?|css|json|md)$' || true)
+if [ -n "$STAGED" ]; then
+  echo "$STAGED" | xargs yarn prettier --write --ignore-unknown
+  echo "$STAGED" | xargs git add
+fi

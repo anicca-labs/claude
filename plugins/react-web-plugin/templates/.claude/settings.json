@@ -1,0 +1,64 @@
+{
+  "enableAllProjectMcpServers": true,
+  "extraKnownMarketplaces": {
+    "anicca-labs": {
+      "source": {
+        "source": "github",
+        "repo": "anicca-labs/claude"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "react-web-plugin@anicca-labs": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(tsc:*)",
+      "Bash(yarn tsc:*)",
+      "Bash(yarn check:tsc:*)",
+      "Bash(yarn typecheck:*)",
+      "Bash(yarn dev:*)",
+      "Bash(yarn build:*)",
+      "Bash(yarn lint:*)",
+      "Bash(yarn eslint:*)",
+      "Bash(yarn format:*)",
+      "Bash(yarn test:*)",
+      "Bash(yarn e2e:*)",
+      "Bash(yarn playwright:*)",
+      "Bash(yarn add:*)",
+      "Bash(yarn remove:*)",
+      "Bash(yarn install:*)",
+      "Bash(yarn dlx:*)",
+      "Bash(yarn generate:db-types:*)",
+      "Bash(node:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(git branch:*)",
+      "Bash(doppler run:*)",
+      "Bash(doppler secrets:*)",
+      "Bash(stripe listen:*)",
+      "Bash(stripe trigger:*)",
+      "Bash(stripe events:*)",
+      "Bash(supabase gen:*)",
+      "Bash(curl -s*)",
+      "Bash(bash:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:cdn.jsdelivr.net)",
+      "WebFetch(domain:esm.sh)"
+    ],
+    "deny": []
+  }
+}

@@ -1,0 +1,52 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens — the single source of truth for color, radius, and any other
+ * scale the design system owns. Every @theme variable generates the matching
+ * Tailwind utilities (e.g. --color-brand → bg-brand, text-brand, border-brand).
+ *
+ * Rules (see /react-web-plugin:coding-standards):
+ * - No ad-hoc hex/rgb in class names — if a color isn't here, add it here first.
+ * - Dark mode: redefine the variables under the dark selector below; avoid
+ *   sprinkling dark: variants on every element.
+ */
+@theme {
+  /* Surfaces */
+  --color-surface: oklch(0.985 0.002 250);
+  --color-surface-card: oklch(1 0 0);
+  --color-surface-subtle: oklch(0.96 0.004 250);
+
+  /* Borders */
+  --color-border-subtle: oklch(0.92 0.004 250);
+  --color-border-default: oklch(0.86 0.006 250);
+
+  /* Text */
+  --color-text-primary: oklch(0.21 0.02 260);
+  --color-text-secondary: oklch(0.45 0.015 260);
+  --color-text-tertiary: oklch(0.6 0.01 260);
+
+  /* Brand */
+  --color-brand: oklch(0.55 0.2 260);
+  --color-brand-hover: oklch(0.5 0.2 260);
+
+  /* Radius */
+  --radius-card: 0.75rem;
+}
+
+/* Dark theme — token values swap; component classes stay unchanged. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface: oklch(0.17 0.01 260);
+    --color-surface-card: oklch(0.21 0.012 260);
+    --color-surface-subtle: oklch(0.25 0.012 260);
+    --color-border-subtle: oklch(0.3 0.01 260);
+    --color-border-default: oklch(0.38 0.01 260);
+    --color-text-primary: oklch(0.95 0.005 260);
+    --color-text-secondary: oklch(0.75 0.01 260);
+    --color-text-tertiary: oklch(0.6 0.01 260);
+  }
+}
+
+body {
+  @apply bg-surface text-text-primary antialiased;
+}

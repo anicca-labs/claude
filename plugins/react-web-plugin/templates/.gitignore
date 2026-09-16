@@ -1,0 +1,46 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# production build
+dist/
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+
+# env files (generated from Doppler — .env.example documents the surface)
+.env
+.env.local
+.env.*.local
+.mcp-env
+.mcp-project
+
+# typescript
+*.tsbuildinfo
+
+# tests
+coverage/
+playwright-report/
+test-results/
+/e2e/.auth/
+
+# Sentry
+.sentryclirc
+
+# Supabase local dev
+supabase/.temp/
+
+# Yarn Berry
+.yarn/cache
+.yarn/install-state.gz
