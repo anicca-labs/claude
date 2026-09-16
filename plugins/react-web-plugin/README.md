@@ -4,9 +4,10 @@ Claude Code plugin for React **web** projects — the web-stack sibling of [`exp
 
 ## Stack
 
-- **Next.js** (App Router) + **TypeScript** (strict)
+- **Next.js** (App Router) + **TypeScript** (strict), hosted on **Vercel**
 - **Tailwind CSS v4** (CSS-first tokens, no `tailwind.config.js`)
-- **Postgres / Supabase** (`@supabase/ssr` cookie sessions, RLS, `api` schema)
+- **Postgres** — any provider via `DATABASE_URL` (RDS, Neon, Vercel Postgres, Supabase). Supabase-specific pieces (`@supabase/ssr` auth, RLS conventions, `templates/src/lib/supabase/`) are optional: keep them if Supabase is the backend, delete them if not
+- **AWS S3** for file storage (presigned-URL pattern — see the `storage` skill)
 - **Stripe** (Checkout, webhooks, entitlements — web billing, not RevenueCat)
 - **React Query** + **react-hook-form** + **zod**
 - **Sentry** (`@sentry/nextjs`)
@@ -36,7 +37,13 @@ This is a selective port, not a fork. What moved, what didn't:
 
 - `scripts/browser-screenshot.sh` — Playwright screenshot of the running dev server
 - Stripe-on-web guidance: raw-body webhook verification, Billing Portal, entitlements table
+- `deployment` skill (Vercel: environments, env-var scoping, logs, Next.js-on-Vercel gotchas) and the Vercel MCP
+- `storage` skill (AWS S3: presigned uploads/downloads, multi-tenant object keys)
 - Agent-workflow templates: `implementer` / `reviewer` project agents, the `claude-code-review.yml` PR workflow, and `review-focus.md`
+
+**Database MCP connection modes**
+
+The bundled database MCP server connects via `DATABASE_URL` (any Postgres; set `DB_SCHEMA` if your schema isn't `public`), or falls back to `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (requires the `run_sql` RPC from the expo-rn-plugin setup).
 
 ## Requirements
 

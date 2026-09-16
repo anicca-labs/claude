@@ -1,4 +1,4 @@
-import { runSql } from "../db-client";
+import { runSql, DB_SCHEMA } from "../db-client";
 
 interface ColumnInfo {
   column_name: string;
@@ -21,7 +21,7 @@ export async function getTables(): Promise<TableInfo[]> {
       c.is_nullable,
       c.column_default
     FROM information_schema.columns c
-    WHERE c.table_schema = 'api'
+    WHERE c.table_schema = '${DB_SCHEMA}'
     ORDER BY c.table_name, c.ordinal_position
   `);
 

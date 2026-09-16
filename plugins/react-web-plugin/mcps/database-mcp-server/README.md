@@ -29,6 +29,15 @@ MCP server for database operations. Provides schema introspection, RLS policy in
 
 ### Environment variables
 
+Preferred — any Postgres (RDS, Neon, Vercel Postgres, Supabase direct connection):
+
+```env
+DATABASE_URL=postgres://user:pass@host:5432/dbname
+DB_SCHEMA=public   # optional; schema the introspection tools read
+```
+
+Fallback — Supabase REST mode (requires the `run_sql` RPC in the project):
+
 ```env
 SUPABASE_URL=https://<project>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>

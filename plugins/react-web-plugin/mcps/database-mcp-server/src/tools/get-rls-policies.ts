@@ -1,4 +1,4 @@
-import { runSql } from "../db-client";
+import { runSql, DB_SCHEMA } from "../db-client";
 
 interface RlsPolicy {
   table_name: string;
@@ -23,7 +23,7 @@ export async function getRlsPolicies(tableName?: string): Promise<RlsPolicy[]> {
   const rows = await runSql(`
     SELECT tablename, policyname, cmd, permissive, roles, qual, with_check
     FROM pg_policies
-    WHERE schemaname = 'api'
+    WHERE schemaname = '${DB_SCHEMA}'
     ${tableFilter}
     ORDER BY tablename, policyname
   `);

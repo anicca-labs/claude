@@ -1,7 +1,7 @@
 {
   "name": "react-web-plugin",
   "version": "0.1.0",
-  "description": "Claude Code plugin for React web projects — Next.js (App Router), TypeScript strict, Tailwind CSS v4, Supabase/Postgres, Stripe, React Query, Sentry, Vitest, and Playwright. Provides a database MCP server, scaffolding, review agents, and browser preview for multi-tenant B2B dashboards.",
+  "description": "Claude Code plugin for React web projects — Next.js (App Router) on Vercel, TypeScript strict, Tailwind CSS v4, Postgres (any provider; Supabase optional), Stripe, AWS S3, React Query, Sentry, Vitest, and Playwright. Provides a database MCP server, scaffolding, review agents, and browser preview for multi-tenant B2B dashboards.",
   "author": {
     "name": "Mariano Ksairi",
     "email": "marianoksairi@gmail.com"
@@ -13,6 +13,9 @@
     "tailwind",
     "database",
     "typescript",
+    "postgres",
+    "vercel",
+    "s3",
     "supabase",
     "stripe"
   ],

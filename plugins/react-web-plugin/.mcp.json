@@ -8,6 +8,10 @@
         "NODE_PATH": "${CLAUDE_PLUGIN_ROOT}/mcps/database-mcp-server/node_modules"
       }
     },
+    "vercel": {
+      "type": "http",
+      "url": "https://mcp.vercel.com"
+    },
     "supabase": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT:-.}/bin/mcp-run.sh",

@@ -1,4 +1,4 @@
-import { runSql } from "../db-client.js";
+import { runSql, DB_SCHEMA } from "../db-client.js";
 
 interface ColumnInfo {
   column_name: string;
@@ -40,13 +40,13 @@ export async function getSchema(): Promise<FullSchema> {
     runSql(`
       SELECT c.table_name, c.column_name, c.data_type, c.is_nullable, c.column_default
       FROM information_schema.columns c
-      WHERE c.table_schema = 'api'
+      WHERE c.table_schema = '${DB_SCHEMA}'
       ORDER BY c.table_name, c.ordinal_position
     `),
     runSql(`
       SELECT table_name AS view_name, view_definition AS definition
       FROM information_schema.views
-      WHERE table_schema = 'api'
+      WHERE table_schema = '${DB_SCHEMA}'
       ORDER BY table_name
     `),
     runSql(`
@@ -56,7 +56,7 @@ export async function getSchema(): Promise<FullSchema> {
       FROM information_schema.routines r
       JOIN pg_proc p ON p.proname = r.routine_name
       JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE r.routine_schema = 'api' AND n.nspname = 'api'
+      WHERE r.routine_schema = '${DB_SCHEMA}' AND n.nspname = '${DB_SCHEMA}'
       ORDER BY r.routine_name
     `),
     runSql(`
@@ -65,7 +65,7 @@ export async function getSchema(): Promise<FullSchema> {
       FROM pg_type t
       JOIN pg_enum e ON t.oid = e.enumtypid
       JOIN pg_namespace n ON n.oid = t.typnamespace
-      WHERE n.nspname = 'api'
+      WHERE n.nspname = '${DB_SCHEMA}'
       GROUP BY t.typname
       ORDER BY t.typname
     `),
