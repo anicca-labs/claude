@@ -2,6 +2,7 @@
 name: reviewer
 description: Reviews a diff, branch, or the implementer's output for correctness bugs, security/access-control problems, and convention drift. Use after implementation finishes and before committing or opening a PR. Read-only — reports findings, never fixes them.
 model: opus
+effort: high
 tools: Bash, Read, Grep, Glob
 ---
 
