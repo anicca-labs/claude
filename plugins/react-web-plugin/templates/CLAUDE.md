@@ -52,6 +52,7 @@ Run `/react-web-plugin:coding-standards` to load full standards. Quick pointers:
 - **Delegate implementation.** For any multi-file implementation task, spawn the `implementer` agent with a clear spec (what to build, which files/areas, what "done" means). Do not implement large tasks directly in the main loop — keep this context for decisions and review.
 - **Review before committing.** After the implementer reports back, run the `reviewer` agent on the diff (quick in-loop gate). Every PR is also reviewed automatically by the Claude GitHub workflow (`.github/workflows/claude-code-review.yml`) — address its inline comments before merging. For big or risky merges, additionally run `/code-review ultra` locally.
 - One review layer is the policy. Do not stack additional review passes; vary the lens (correctness, security), not the count.
+- **Model discipline (subscription budgets).** Run the main session on the cheap tier (Sonnet) for routine driving; switch up to the strong tier for planning sessions and genuinely hard problems, then back down. Cheap model for conversations that produce code, strong model for conversations that produce decisions. `/clear` between tasks — long sessions re-send their whole context every turn.
 - Trivial edits (one file, a few lines) skip the ceremony: just do them in the main loop.
 
 ## Project context
