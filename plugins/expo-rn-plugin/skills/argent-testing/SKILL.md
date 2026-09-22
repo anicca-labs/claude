@@ -52,7 +52,13 @@ Always call **`describe`** (cross-platform: iOS ax-service or Android devtools) 
 ## Platform-specific verified behavior (v0.25.2, tested against real devices)
 
 - **Android:** fully verified working end-to-end — `boot-device` → `describe` → `gesture-tap` (using `describe`'s coordinates) → `screenshot` correctly confirmed a real app launch (tapping the Phone icon opened the dialer). No extra setup needed beyond a working Android SDK emulator.
-- **iOS:** `screenshot` works reliably headless, no GUI required. **`gesture-tap` and other interaction tools require the actual Simulator.app GUI application to be installed** (`Xcode.app/Contents/Developer/Applications/Simulator.app`) — on a machine where Xcode is missing that component (some CI-oriented or trimmed Xcode installs), every interaction call fails with `CoreDevice HID transport is dead: ... reattach required`, even immediately after `boot-device --force`. This is a real environment prerequisite, not a flaky Argent bug — screenshot-only iOS workflows still work fine without it; check `ls "$(xcode-select -p)/Applications/Simulator.app"` before relying on iOS interaction.
+- **iOS:** `screenshot` works reliably headless, no GUI required. **`gesture-tap` and other interaction tools require the simulator's GUI application to actually be running** — on a machine missing it (some CI-oriented or trimmed Xcode installs), every interaction call fails with `CoreDevice HID transport is dead: ... reattach required`, even immediately after `boot-device --force`. This is a real environment prerequisite, not a flaky Argent bug — screenshot-only iOS workflows still work fine without it.
+
+  **Naming/path varies by Xcode version** (verified across two): Xcode ≤26 ships it as `Simulator.app` at `Contents/Developer/Applications/Simulator.app`. **Xcode 27 renamed and relocated it to `DeviceHub.app` at `Contents/Applications/DeviceHub.app`** — the old path is gone entirely under 27, not just moved-and-still-findable. Check both before concluding it's missing:
+  ```bash
+  ls "$(xcode-select -p)/Applications/Simulator.app" 2>/dev/null || ls "$(xcode-select -p)/../Applications/DeviceHub.app" 2>/dev/null
+  ```
+  Launch whichever exists (`open <path>`) and keep it running before relying on iOS interaction — booting the device via `simctl`/`boot-device` alone, without the GUI app actually open, is what produces the HID transport error.
 
 ## If Argent isn't installed
 
