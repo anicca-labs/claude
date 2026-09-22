@@ -39,7 +39,20 @@ Confirmed by running `yarn dlx @swmansion/argent@latest tools` — 76 tools tota
 
 Run `argent tools describe <name>` (or `yarn dlx @swmansion/argent@latest run <tool> --help`) for a tool's exact flags before calling it — flag names aren't always what you'd guess (e.g. `screenshot` takes `--udid`, not `--device`).
 
-Known quirk observed in testing: a device's HID transport can die between calls ("CoreDevice HID transport is dead... reattach required") if the Simulator.app GUI isn't actually open and foregrounded — booting via `xcrun simctl boot` alone isn't enough. Run `open -a Simulator` (or launch Simulator.app manually) and keep it frontmost/visible for a stable session, not just a booted-but-headless device.
+## Boot devices through Argent, not raw platform tools
+
+Use **`boot-device`** to start a simulator/emulator, not `xcrun simctl boot` / `emulator -avd` directly — a device booted outside Argent is missing the accessibility hooks Argent's own tools expect (`describe` on such a device returns a hint: *"This simulator was not booted through argent... boot-device with force=true reboots the simulator with the full accessibility settings"*).
+
+## Never guess tap coordinates from a screenshot — use `describe`
+
+`gesture-tap`/`gesture-swipe` take **normalized 0.0–1.0 fractions of width/height**, and it is easy to mis-eyeball those from a screenshot — a coordinate error is by far the most common cause of a tap silently landing on nothing. **Verified failure mode:** `gesture-tap` returns `{ tapped: true, timestampMs }` — a "success" — even when the tap landed on empty space and nothing happened. The return value does not confirm your coordinates were right.
+
+Always call **`describe`** (cross-platform: iOS ax-service or Android devtools) first, read the target element's `(x, y, width, height)` frame, and tap its center (`x + width/2`, `y + height/2`) — don't estimate from a screenshot. Re-screenshot after every interaction to visually confirm the expected change happened; treat `{tapped: true}` alone as inconclusive.
+
+## Platform-specific verified behavior (v0.25.2, tested against real devices)
+
+- **Android:** fully verified working end-to-end — `boot-device` → `describe` → `gesture-tap` (using `describe`'s coordinates) → `screenshot` correctly confirmed a real app launch (tapping the Phone icon opened the dialer). No extra setup needed beyond a working Android SDK emulator.
+- **iOS:** `screenshot` works reliably headless, no GUI required. **`gesture-tap` and other interaction tools require the actual Simulator.app GUI application to be installed** (`Xcode.app/Contents/Developer/Applications/Simulator.app`) — on a machine where Xcode is missing that component (some CI-oriented or trimmed Xcode installs), every interaction call fails with `CoreDevice HID transport is dead: ... reattach required`, even immediately after `boot-device --force`. This is a real environment prerequisite, not a flaky Argent bug — screenshot-only iOS workflows still work fine without it; check `ls "$(xcode-select -p)/Applications/Simulator.app"` before relying on iOS interaction.
 
 ## If Argent isn't installed
 
