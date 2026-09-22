@@ -298,6 +298,7 @@ All skills are invoked with the full `/expo-rn-plugin:<name>` prefix.
 | `sentry`                 | Sentry error monitoring — setup, capture patterns, and MCP usage                                                                                                               |
 | `stripe`                 | Stripe payments — PaymentSheet flow, PCI rules, and MCP usage                                                                                                                  |
 | `preview`                | Screenshot the running simulator, check device errors, and run tsc — use after every UI change                                                                                 |
+| `argent-testing`         | _(optional, third-party)_ Deep interactive simulator testing via [Argent](https://argent.swmansion.com) — gestures, recorded E2E flows, visual regression, native profiling. One-time per-project `npx @swmansion/argent@latest init`. |
 | `coding-standards`       | Load project coding standards on demand (TypeScript, Tamagui, Zustand, Lingui)                                                                                                 |
 | `analytics`              | Load analytics standards — event naming, screen tracking, user identification, privacy rules (Firebase default; PostHog, Amplitude alternatives)                               |
 | `testing`                | Write or fix component and hook tests using jest-expo and @testing-library/react-native                                                                                        |

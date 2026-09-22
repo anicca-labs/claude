@@ -43,6 +43,11 @@
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT:-.}/bin/mcp-run.sh",
       "args": ["npx", "-y", "@upstash/context7-mcp@latest"]
+    },
+    "chrome-devtools": {
+      "type": "stdio",
+      "command": "${CLAUDE_PLUGIN_ROOT:-.}/bin/mcp-run.sh",
+      "args": ["npx", "-y", "chrome-devtools-mcp@latest"]
     }
   }
 }

@@ -98,3 +98,12 @@ Playwright's `webServer` config starts `yarn dev` automatically; e2e users are s
 - For navigation: mock `next/navigation` (`vi.mock('next/navigation')`) — `useRouter`, `useSearchParams`, `redirect`
 - Vitest for logic and components; don't write an e2e test for what a component test covers — e2e is for flows that cross pages or need real auth/RLS
 - Run `tsc --noEmit` after writing tests — type errors in tests count
+
+## Interactive / exploratory testing (beyond written tests)
+
+Written Vitest/Playwright tests are the deterministic, CI-checked layer — always the default. For live, interactive testing against the running dev server, two complementary tools are available; neither replaces written tests, they're for exploration and debugging:
+
+- **`chrome-devtools` MCP** (bundled with this plugin) — inspects a running Chrome instance: network request timing, performance traces, console, memory. Reach for it when debugging *why* something is slow or broken, not to drive UI flows.
+- **Claude in Chrome** — Anthropic's own browser extension (installed by the user from the Chrome Web Store, tied to their Claude account, not an MCP server this plugin configures). It can click, type, navigate, and read the live page, and can connect to a Claude Code session as one of its surfaces. Good for a human-in-the-loop pass — "open this flow and check it actually works" — where writing a Playwright script isn't worth it yet. If a flow is worth checking repeatedly, promote it to a Playwright e2e test instead.
+
+Default to Playwright for anything that should run in CI and stay correct over time; reach for these two only for one-off debugging or exploration.
