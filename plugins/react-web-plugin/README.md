@@ -13,6 +13,8 @@ Claude Code plugin for React **web** projects — the web-stack sibling of [`exp
 - **Sentry** (`@sentry/nextjs`)
 - **Vitest** (unit) + **Playwright** (e2e)
 
+**Alternative path:** the plugin also supports a **Vite SPA + Express API + Inngest + Nx/pnpm monorepo** stack for teams that split frontend and backend into separate deployables instead of using Next.js. See the `vite-spa`, `express-api`, `inngest-jobs`, `nx-monorepo`, and `contracts` skills below — check for `vite.config.ts`, a standalone Express `app.ts`/`server.ts`, `nx.json`, or `pnpm-workspace.yaml` before assuming the Next.js conventions apply.
+
 ## Relationship to expo-rn-plugin
 
 This is a selective port, not a fork. What moved, what didn't:
@@ -105,6 +107,11 @@ The templates include an **Agent workflow** section in `CLAUDE.md` plus `.claude
 | `sentry` | `@sentry/nextjs` setup (three runtimes), source maps, capture patterns |
 | `preview` | Browser screenshot of the dev server + surface errors + tsc — use after every UI change |
 | `i18n` | *(optional)* next-intl pointer — adopt when a second locale is real, plus rules that keep adoption cheap |
+| `vite-spa` | Vite + React Router SPA conventions — routing, persona-based `React.lazy` code-splitting, guard components, Vitest-in-`vite.config.ts` |
+| `express-api` | Express API conventions — middleware order (incl. raw-body webhook routes before `express.json()`), route/service layering, singleton DB client, managed-test-server integration testing |
+| `inngest-jobs` | Inngest background jobs/cron — function registry, `step.run`/`step.sendEvent`, sweep-then-dispatch, typed event catalogs, idempotent money-mutating work |
+| `nx-monorepo` | Nx + pnpm monorepo conventions — workspace layout, `@nx/enforce-module-boundaries` tags, `nx affected`, caching |
+| `contracts` | Zod-as-contract pattern — one schema shared as both compile-time type and runtime validation across app and API |
 
 ### Agents (available in `/agents`)
 
@@ -126,6 +133,11 @@ Models are declared as **aliases** (`opus` / `haiku`), not pinned snapshots, so 
 | `database` | DB introspection, query generation, migration generation, RLS inspection (ships pre-built in `dist/` — no build step) |
 
 The server is wrapped by `bin/mcp-run.sh`, which injects secrets from Doppler when a project is configured (via plugin `userConfig`, an `mcp.config.json` `doppler` block, or `doppler setup`) and runs the command directly otherwise. Add project-level MCP servers (supabase, sentry, stripe, github, context7) in the app's own `.mcp.json` as needed — the expo plugin's entries are a good reference.
+
+Two more have been added to `.mcp.json` for projects on the Vite/Express/Inngest path:
+
+- **Render** — official MCP server, HTTP transport, OAuth-authenticated. Useful when the API/Express app is deployed on Render (service status, logs, deploys).
+- **Inngest** — official MCP server, but **local-only**: it's the dev server's own MCP endpoint (`http://localhost:8288/mcp`), only reachable while `inngest-cli dev` is running. See the `inngest-jobs` skill.
 
 ### Hooks (automatic)
 

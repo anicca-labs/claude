@@ -81,6 +81,30 @@ Tailwind v4 is CSS-first: there is no `tailwind.config.js` by default. Tokens ar
 - Dark mode via CSS variables: redefine the `@theme` variables under the dark selector rather than sprinkling `dark:` variants on every element; use `dark:` only for genuinely per-element exceptions
 - Repeated class combos: extract a component, not an `@apply` rule — `@apply` hides the design system from the markup and resists tailwind-merge
 
+### Tailwind v3 (classic config) is equally valid
+
+The CSS-first `@theme` approach above is the v4 convention — don't assume it's the only correct one. A project on Tailwind v3 uses a classic JS/CJS `tailwind.config.js`/`.ts` with `content` globs and a PostCSS pipeline instead:
+
+```js
+// tailwind.config.js
+module.exports = {
+  content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
+  presets: [require('./tailwind.preset.js')], // shared tokens live in a preset, not @theme
+  theme: {
+    extend: {
+      colors: { brand: 'oklch(0.55 0.2 260)' },
+    },
+  },
+};
+```
+
+```js
+// postcss.config.js
+module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } };
+```
+
+Tokens shared across multiple apps in a monorepo are typically a `presets` array entry rather than duplicated `theme.extend` blocks per app. Before assuming which version applies, check the project's actual `tailwind.config.*` / `postcss.config.*` files and the installed `tailwindcss` version in `package.json` — don't default to v4 conventions on a v3 project or vice versa.
+
 ## React / Components
 
 - Follow React best practices (hooks, memoization, clean component structure)
@@ -164,6 +188,15 @@ Every tenant-owned table carries the tenant column (`business_id`); every query,
 
 - Format dates with `date-fns` — pass an explicit locale for locale-aware output
 - Render timestamps client-side or pass a fixed formatted string from the server — naive `toLocaleDateString()` in a server component formats in the *server's* locale/timezone and can hydration-mismatch against the client
+
+## Package manager detection
+
+This toolkit's default is Yarn, but that's a default for *new* projects, not a rule to enforce on an existing one. Before running any install/add/run command, check the existing project's `package.json` `"packageManager"` field and which lockfile is checked in:
+
+- `pnpm-lock.yaml` present, or `"packageManager": "pnpm@..."` → use `pnpm`
+- `yarn.lock` present, or `"packageManager": "yarn@..."` → use `yarn`
+
+Running the wrong package manager's install command creates a second, conflicting lockfile and can silently diverge dependency resolution from what CI uses.
 
 ## Unit / Component Tests
 

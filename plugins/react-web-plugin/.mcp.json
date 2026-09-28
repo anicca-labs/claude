@@ -12,6 +12,14 @@
       "type": "http",
       "url": "https://mcp.vercel.com"
     },
+    "render": {
+      "type": "http",
+      "url": "https://mcp.render.com/mcp"
+    },
+    "inngest": {
+      "type": "http",
+      "url": "http://localhost:8288/mcp"
+    },
     "supabase": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT:-.}/bin/mcp-run.sh",

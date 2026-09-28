@@ -109,3 +109,24 @@ Written Vitest/Playwright tests are the deterministic, CI-checked layer — alwa
 - **Claude in Chrome** — Anthropic's own browser extension (installed by the user from the Chrome Web Store, tied to their Claude account, not an MCP server this plugin configures). It can click, type, navigate, and read the live page, and can connect to a Claude Code session as one of its surfaces. Good for a human-in-the-loop pass — "open this flow and check it actually works" — where writing a Playwright script isn't worth it yet. If a flow is worth checking repeatedly, promote it to a Playwright e2e test instead.
 
 Default to Playwright for anything that should run in CI and stay correct over time; reach for these two only for one-off debugging or exploration.
+
+## Mutation testing (optional, high-rigor)
+
+Passing tests only prove the code ran without crashing — they don't prove the tests would actually **catch** a broken change to the logic. Mutation testing (via [StrykerJS](https://stryker-mutator.io/)) checks that directly: it automatically introduces small deliberate bugs ("mutants") into the source — flipping a `>` to `>=`, inverting a boolean, changing a `+` to `-` — reruns the test suite against each mutant, and reports any mutant that **survived** (every test still passed) as a gap. A surviving mutant means the logic can silently break in that exact way and nothing would fail.
+
+Reach for it on pure, high-stakes logic — pricing calculations, discount/proration math, permission checks, anything money- or security-critical — not the whole repo. It's slow (it reruns the suite once per mutant) and most valuable where a test suite already exists and needs to be trusted, not as a substitute for writing tests in the first place. Scope it to a specific package or directory:
+
+```json
+// stryker.conf.json
+{
+  "mutate": ["src/features/billing/**/*.ts", "!src/features/billing/**/*.test.ts"],
+  "testRunner": "vitest",
+  "reporters": ["html", "clear-text", "progress"]
+}
+```
+
+```bash
+yarn dlx stryker run
+```
+
+Treat a low mutation score on billing/permission logic as a real signal to add missing test cases (e.g. a boundary condition nobody tested), not something to raise the threshold past. It's an occasional deep-check tool, not a CI gate on every PR — running it repo-wide would make CI unusably slow for little added signal outside the critical paths it's built for.
