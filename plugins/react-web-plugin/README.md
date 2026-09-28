@@ -145,7 +145,7 @@ The server is wrapped by `bin/mcp-run.sh`, which injects secrets from Doppler wh
 
 Two more have been added to `.mcp.json` for projects on the Vite/Express/Inngest path:
 
-- **Render** — official MCP server, HTTP transport, OAuth-authenticated. Useful when the API/Express app is deployed on Render (service status, logs, deploys).
+- **Render** — official MCP server, HTTP transport, **API-key authenticated**: export `RENDER_API_KEY` (Render → Account Settings → API Keys) in the shell Claude Code starts from. Render's OAuth server has no dynamic client registration, so generic `/mcp` browser login fails ("does not support dynamic client registration"). Useful when the API/Express app is deployed on Render (service status, logs, deploys).
 - **Inngest** — official MCP server, but **local-only**: it's the dev server's own MCP endpoint (`http://localhost:8288/mcp`), only reachable while `inngest-cli dev` is running. See the `inngest-jobs` skill.
 
 ### Hooks (automatic)
