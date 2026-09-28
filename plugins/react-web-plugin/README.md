@@ -134,6 +134,15 @@ Models are declared as **aliases** (`opus` / `haiku`), not pinned snapshots, so 
 
 The server is wrapped by `bin/mcp-run.sh`, which injects secrets from Doppler when a project is configured (via plugin `userConfig`, an `mcp.config.json` `doppler` block, or `doppler setup`) and runs the command directly otherwise. Add project-level MCP servers (supabase, sentry, stripe, github, context7) in the app's own `.mcp.json` as needed — the expo plugin's entries are a good reference.
 
+**Not using Doppler?** Many web projects keep secrets in Vercel/Render environment variables instead of a secrets manager. Since MCP servers don't read a project's `.env` on their own, point the runner at one so servers like `stripe` and `sentry` get their keys without every developer exporting them in their shell profile:
+
+```jsonc
+// mcp.config.json at the repo root
+{ "envFile": "apps/api/.env" }   // relative to this file, or an absolute path
+```
+
+`CLAUDE_PLUGIN_OPTION_ENV_FILE` does the same thing as an absolute-path override. Doppler still takes precedence where it's configured; the `.env` path is the fallback. Point it at a **gitignored** `.env` — never a committed `.env.example`, which holds empty placeholders and would put a real secret in version control.
+
 Two more have been added to `.mcp.json` for projects on the Vite/Express/Inngest path:
 
 - **Render** — official MCP server, HTTP transport, OAuth-authenticated. Useful when the API/Express app is deployed on Render (service status, logs, deploys).

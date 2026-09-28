@@ -62,6 +62,19 @@ _json_doppler() {
   printf '%s' "$_default"
 }
 
+# Read a TOP-LEVEL key from mcp.config.json (e.g. "envFile"), same node/python3
+# fallback strategy as _json_doppler above.
+_json_top() {
+  local _f="$1" _key="$2" _default="${3:-}"
+  if command -v node >/dev/null 2>&1; then
+    node -e 'try{const c=require(process.argv[1]);const v=c[process.argv[2]];process.stdout.write(v?String(v):(process.argv[3]||""))}catch(e){process.stdout.write(process.argv[3]||"")}' "$_f" "$_key" "$_default" 2>/dev/null && return
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get(sys.argv[2]) or sys.argv[3])" "$_f" "$_key" "$_default" 2>/dev/null && return
+  fi
+  printf '%s' "$_default"
+}
+
 if [ -z "$PROJECT" ]; then
   _cfg=$(_find_config)
   if [ -n "$_cfg" ]; then
@@ -86,7 +99,34 @@ if [ -z "$PROJECT" ] && command -v doppler &>/dev/null; then
   CONFIG=$(doppler configure get config --scope "$PWD" --plain 2>/dev/null || echo "${CONFIG:-dev}")
 fi
 
+# No Doppler in this project? Fall back to a .env file. Projects that keep their
+# secrets in Vercel/Render env vars (rather than a secrets manager) can mirror the
+# ones MCP servers need into a local gitignored .env and point at it here, instead
+# of requiring every developer to export them in their shell profile.
+#
+#   mcp.config.json  ->  { "envFile": "apps/api/.env" }   (relative to that file)
+#   or set CLAUDE_PLUGIN_OPTION_ENV_FILE to an absolute path.
+#
+# Never point this at a committed .env.example — those hold empty placeholders,
+# and a real secret in one would be committed to the repo.
 if [ -z "$PROJECT" ]; then
+  _envfile="${CLAUDE_PLUGIN_OPTION_ENV_FILE:-}"
+  if [ -z "$_envfile" ]; then
+    _envcfg=$(_find_config)
+    if [ -n "$_envcfg" ]; then
+      _envfile=$(_json_top "$_envcfg" envFile "")
+      case "$_envfile" in
+        "" | /*) ;;
+        *) _envfile="$(dirname "$_envcfg")/$_envfile" ;;
+      esac
+    fi
+  fi
+  if [ -n "$_envfile" ] && [ -r "$_envfile" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$_envfile"
+    set +a
+  fi
   exec "$@"
 fi
 
