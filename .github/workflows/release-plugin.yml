@@ -1,17 +1,18 @@
 name: Release plugin
 
-# Auto-bumps expo-rn-plugin's version on every change to main, so consumers get
-# the update via `plugin update`. For a Claude Code marketplace the repo IS the
+# Auto-bumps the version of every plugin changed on main, so consumers get the
+# update via `plugin update`. For a Claude Code marketplace the repo IS the
 # registry, so bumping the version on main is the "publish".
 #
 # No manual version edits needed. (You CAN still hand-bump for a minor/major —
-# this job detects that the version already changed and skips, so no double-bump.)
+# this job detects that a plugin's version already changed and skips it, so no
+# double-bump.) New plugins under plugins/ are picked up automatically.
 
 on:
   push:
     branches: [main]
     paths:
-      - 'plugins/expo-rn-plugin/**'
+      - 'plugins/**'
 
 permissions:
   contents: write
@@ -37,43 +38,53 @@ jobs:
           node-version: 24
           package-manager-cache: false  # repo pins yarn@4.9.2 via corepack; skip v5 auto-cache
 
-      - name: Skip if version was already changed in this push
-        id: guard
+      - name: Bump changed plugins
         run: |
-          PJ=plugins/expo-rn-plugin/.claude-plugin/plugin.json
-          CUR=$(node -pe 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).version' "$PJ")
-          OLD=""
           BEFORE='${{ github.event.before }}'
-          if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
-            OLD=$(git show "$BEFORE:$PJ" 2>/dev/null | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).version' 2>/dev/null || echo "")
-          fi
-          if [ -n "$OLD" ] && [ "$OLD" != "$CUR" ]; then
-            echo "Version already changed ($OLD -> $CUR) — skipping auto-bump."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
+          AFTER='${{ github.sha }}'
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE="$AFTER~1"
           fi
 
-      - name: Bump patch version
-        if: steps.guard.outputs.skip == 'false'
-        run: |
-          PJ=plugins/expo-rn-plugin/.claude-plugin/plugin.json
-          NEW=$(node -e 'const fs=require("fs");const p=process.argv[1];let s=fs.readFileSync(p,"utf8");const m=s.match(/"version":\s*"(\d+)\.(\d+)\.(\d+)"/);const v=[+m[1],+m[2],+m[3]+1].join(".");fs.writeFileSync(p,s.replace(/("version":\s*")\d+\.\d+\.\d+(")/,"$1"+v+"$2"));console.log(v);' "$PJ")
-          echo "NEW=$NEW" >> "$GITHUB_ENV"
-          echo "Bumped to $NEW"
+          ver() { node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).version' 2>/dev/null; }
 
-      - name: Keep package.json version in lockstep
-        if: steps.guard.outputs.skip == 'false'
-        run: |
-          PKG=plugins/expo-rn-plugin/package.json
-          node -e 'const fs=require("fs");const p=process.argv[1];const v=process.argv[2];let s=fs.readFileSync(p,"utf8");fs.writeFileSync(p,s.replace(/("version":\s*")\d+\.\d+\.\d+(")/,"$1"+v+"$2"));' "$PKG" "$NEW"
-          echo "Synced $PKG to $NEW"
+          # Assigned separately so a failing diff fails the job instead of
+          # silently releasing nothing.
+          CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" -- plugins/ | cut -d/ -f2 | sort -u)
 
-      - name: Commit & push
-        if: steps.guard.outputs.skip == 'false'
-        run: |
+          RELEASED=()
+          for PLUGIN in $CHANGED; do
+            PJ="plugins/$PLUGIN/.claude-plugin/plugin.json"
+            [ -f "$PJ" ] || { echo "$PLUGIN: no plugin.json (removed?) — skipping."; continue; }
+
+            CUR=$(ver < "$PJ")
+            OLD=$(git show "$BEFORE:$PJ" 2>/dev/null | ver || echo "")
+            if [ -n "$OLD" ] && [ "$OLD" != "$CUR" ]; then
+              echo "$PLUGIN: version already changed ($OLD -> $CUR) — skipping auto-bump."
+              continue
+            fi
+
+            NEW=$(node -e 'const fs=require("fs");const p=process.argv[1];let s=fs.readFileSync(p,"utf8");const m=s.match(/"version":\s*"(\d+)\.(\d+)\.(\d+)"/);const v=[+m[1],+m[2],+m[3]+1].join(".");fs.writeFileSync(p,s.replace(/("version":\s*")\d+\.\d+\.\d+(")/,"$1"+v+"$2"));console.log(v);' "$PJ")
+            git add "$PJ"
+
+            # Keep package.json in lockstep where a plugin has one.
+            PKG="plugins/$PLUGIN/package.json"
+            if [ -f "$PKG" ]; then
+              node -e 'const fs=require("fs");const p=process.argv[1];const v=process.argv[2];let s=fs.readFileSync(p,"utf8");fs.writeFileSync(p,s.replace(/("version":\s*")\d+\.\d+\.\d+(")/,"$1"+v+"$2"));' "$PKG" "$NEW"
+              git add "$PKG"
+            fi
+
+            echo "$PLUGIN: bumped to $NEW"
+            RELEASED+=("$PLUGIN v$NEW")
+          done
+
+          if [ ${#RELEASED[@]} -eq 0 ]; then
+            echo "Nothing to release."
+            exit 0
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add plugins/expo-rn-plugin/.claude-plugin/plugin.json plugins/expo-rn-plugin/package.json
-          git commit --no-verify -m "chore(release): expo-rn-plugin v$NEW [skip ci]"
+          MSG=$(IFS=,; echo "${RELEASED[*]}" | sed 's/,/, /g')
+          git commit --no-verify -m "chore(release): $MSG [skip ci]"
           git push
