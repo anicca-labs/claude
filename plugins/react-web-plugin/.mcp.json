@@ -45,6 +45,15 @@
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
       "args": ["npx", "-y", "@stripe/mcp"]
     },
+    "aws": {
+      "type": "stdio",
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
+      "args": ["uvx", "awslabs.aws-api-mcp-server@latest"],
+      "env": {
+        "READ_OPERATIONS_ONLY": "true",
+        "AWS_API_MCP_TELEMETRY": "false"
+      }
+    },
     "doppler": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
