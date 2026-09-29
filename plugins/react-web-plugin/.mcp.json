@@ -13,11 +13,9 @@
       "url": "https://mcp.vercel.com"
     },
     "render": {
-      "type": "http",
-      "url": "https://mcp.render.com/mcp",
-      "headers": {
-        "Authorization": "Bearer ${RENDER_API_KEY}"
-      }
+      "type": "stdio",
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
+      "args": ["bash", "-c", "exec npx -y mcp-remote@latest https://mcp.render.com/mcp --header \"Authorization:Bearer $RENDER_API_KEY\""]
     },
     "inngest": {
       "type": "http",
