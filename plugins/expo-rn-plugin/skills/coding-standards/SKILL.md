@@ -683,16 +683,16 @@ await supabase.from('device_tokens').upsert(
 )
 ```
 
-## Supabase deployment rule
+## Production is human-gated
 
-**Always apply every server-side fix — edge functions, migrations, RLS policies, DB schema changes — to both stg AND prd.** Client code is shared and deployed once, but server-side changes are per-project. Never leave one Supabase project behind. Use the project's npm scripts:
+**Never change production yourself.** That means no prd edge-function deploys, migrations, RLS or schema changes, OTA pushes, Doppler prd edits, RevenueCat production changes, live-mode Stripe calls or store submissions, unless the human explicitly approves that specific action in this conversation. Approval for one action doesn't cover the next. Reading production (logs, errors, metrics) is fine when the task needs it.
+
+Server-side changes are per-project, so a fix that only reaches stg leaves production broken while staging looks healthy. Apply and verify on stg, then **tell the human prd is still pending** and hand them the exact command:
 
 ```bash
-yarn functions:deploy:stg   # or the equivalent for migrations
-yarn functions:deploy:prd
+yarn functions:deploy:stg   # you run this (or the migration equivalent)
+yarn functions:deploy:prd   # the human runs this
 ```
-
-If only stg is fixed, bugs will be impossible to reproduce in production and users will be affected while staging appears healthy.
 
 ## Supabase Edge Functions
 

@@ -27,8 +27,8 @@ The store build is still required when native code changes. OTA handles JS-only 
 1. `yarn expo install expo-updates`
 2. Add `runtimeVersion`, `updates`, and `"expo-updates"` plugin to `app.config.ts`
 3. Apply the Supabase migration (table + storage bucket)
-4. Deploy the Edge Function to stg and prd
-5. Set Doppler vars (`EXPO_UPDATE_URL`, `EXPO_UPDATE_CHANNEL`) in stg and prd
+4. Deploy the Edge Function to stg (the human deploys prd)
+5. Set Doppler vars (`EXPO_UPDATE_URL`, `EXPO_UPDATE_CHANNEL`) in stg, and list the prd values for the human to set
 6. Add `scripts/push-ota-update.mjs`, `scripts/prune-ota-updates.mjs`, and `.github/workflows/expo-ota-update.yml`
 7. Apply the iOS native patch (see **iOS native patch** section below)
 8. Add path filters to the store build workflow so it only runs on native-touching files
@@ -115,7 +115,7 @@ create index expo_updates_lookup_idx
   where active = true;
 ```
 
-Apply via the Supabase Management API or dashboard. Repeat for both stg and prd projects.
+Apply via the Supabase Management API or dashboard on stg. The prd project needs the same migration: hand it to the human to apply.
 
 ## Edge Function (`supabase/functions/expo-update-manifest/index.ts`)
 
@@ -207,11 +207,11 @@ Deploy with `--no-verify-jwt` — devices call it without auth:
 supabase functions deploy expo-update-manifest --no-verify-jwt --project-ref <ref>
 ```
 
-**Always deploy to both stg AND prd** whenever the edge function changes. Use the project's npm scripts:
+**Every edge-function change must reach both stg and prd**, but only stg is yours to deploy. Deploy stg, verify, then tell the human prd is pending:
 
 ```bash
-yarn functions:deploy:stg
-yarn functions:deploy:prd
+yarn functions:deploy:stg   # you
+yarn functions:deploy:prd   # the human
 ```
 
 Never deploy to just one — production users will get a different manifest behaviour than staging users and bugs will be hard to reproduce.
@@ -893,8 +893,10 @@ OTA will never reach that build — rebuild, or re-push from the exact build com
 
 ```bash
 yarn push-ota        # stg
-yarn push-ota:prd    # prd
+yarn push-ota:prd    # prd: the human runs this
 ```
+
+Pushing to prd ships code to every production user. Push stg, verify, then hand the human the prd command.
 
 Or just push to `stg`/`main` — the CI workflow fires automatically.
 

@@ -20,20 +20,11 @@ Some setups instead use **separate RevenueCat projects per environment** (e.g. "
 
 ## RevenueCat MCP — reaching stg vs prd
 
-Every MCP launches via `bin/mcp-run.sh`, which runs `doppler run -c <config>` where `<config>` comes from the app's `mcp.config.json` (`doppler.config`, usually `stg`). So the **`revenuecat`** MCP server boots with the stg/default `RC_MCP_API_KEY` and **403s on the prod project** ("API key does not belong to project").
+Every MCP launches via `bin/mcp-run.sh`, which reads the server's declared keys from the Doppler config named in the app's `mcp.config.json` (`doppler.config`, usually `stg`). So the **`revenuecat`** MCP server boots with the stg/default `RC_MCP_API_KEY` and **403s on the prod project** ("API key does not belong to project").
 
-This plugin also ships a **`revenuecat-prd`** server that forces `CLAUDE_PLUGIN_OPTION_DOPPLER_CONFIG=prd` (mcp-run.sh re-applies this override after reading `mcp.config.json`, so it keeps the app's Doppler project but switches to the prd config/key). Use the `revenuecat-prd__*` tools for production paywalls/products; restart MCP servers once after a fresh checkout so it appears.
+This plugin also ships a **`revenuecat-prd`** server that forces `CLAUDE_PLUGIN_OPTION_DOPPLER_CONFIG=prd`. **It is off by default:** `mcp-run.sh` refuses production configs unless the human sets `MCP_RUN_ALLOW_PRODUCTION=1` in their own environment and restarts Claude Code. Even then, use its tools for production paywalls/products only with explicit, per-action approval; reads are fine.
 
-If a restart isn't possible, drive the RC MCP over HTTP directly with the prd key (stateless JSON-RPC, but Cloudflare bans the default urllib UA — send `User-Agent: node`):
-
-```bash
-KEY=$(doppler secrets get RC_MCP_API_KEY -p <project> -c prd --plain)
-curl -s -A node -H "Authorization: Bearer $KEY" -H "Accept: application/json, text/event-stream" \
-  -H "Content-Type: application/json" -X POST https://mcp.revenuecat.ai/mcp \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"edit-paywall-ai","arguments":{...}}}'
-```
-
-Plain reads work via REST too: `curl -A node -H "Authorization: Bearer $KEY" https://api.revenuecat.com/v2/projects`.
+Never work around the guard (for example by fetching the prd key from Doppler and calling the RevenueCat API with curl). If production access is needed and `revenuecat-prd` is off, ask the human.
 
 ## Paywall editing (RevenueCat) — gotchas
 
