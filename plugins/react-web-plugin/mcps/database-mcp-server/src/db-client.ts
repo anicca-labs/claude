@@ -29,6 +29,49 @@ const pool = databaseUrl
     })
   : null;
 
+const READ_ONLY_TIMEOUT = "15s";
+
+// Throws unless the current connection mode can enforce read-only. The
+// Supabase REST `run_sql` RPC executes whatever it's given, so it can't.
+export function assertReadOnlyCapable(hasPool: boolean = pool !== null): void {
+  if (!hasPool) {
+    throw new Error(
+      "run_query needs DATABASE_URL: the Supabase REST fallback can't enforce read-only queries.",
+    );
+  }
+}
+
+// Runs caller-supplied SQL so the database itself refuses any write:
+//   - inside BEGIN TRANSACTION READ ONLY, always rolled back;
+//   - a throwaway SELECT first, so SET TRANSACTION READ WRITE can no longer
+//     switch the mode ("must be set before any query");
+//   - extended query protocol, which accepts exactly one statement, so
+//     "COMMIT; DROP ..." can't step outside the transaction;
+//   - a statement timeout so a runaway query can't hold the connection.
+export async function runReadOnly(
+  query: string,
+): Promise<Record<string, unknown>[]> {
+  assertReadOnlyCapable();
+  const client = await pool!.connect();
+  try {
+    await client.query("BEGIN TRANSACTION READ ONLY");
+    await client.query(`SET LOCAL statement_timeout = '${READ_ONLY_TIMEOUT}'`);
+    await client.query("SELECT 1");
+    // queryMode isn't in @types/pg yet; pg >= 8.13 honours it.
+    const result = await client.query({ text: query, queryMode: "extended" } as never);
+    return (result as { rows: Record<string, unknown>[] }).rows;
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+    client.release();
+  }
+}
+
+export function closePool(): Promise<void> | undefined {
+  return pool?.end();
+}
+
+// For the server's own fixed introspection queries only — never for SQL that
+// comes from the model or the user (use runReadOnly for that).
 export async function runSql(
   query: string,
 ): Promise<Record<string, unknown>[]> {

@@ -1,0 +1,48 @@
+name: Test react-web database MCP server
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/react-web-plugin/mcps/database-mcp-server/**'
+      - '.github/workflows/test-react-web-database.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/react-web-plugin/mcps/database-mcp-server/**'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: plugins/react-web-plugin/mcps/database-mcp-server
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Setup Yarn Berry
+        run: corepack enable && corepack prepare yarn@4.9.2 --activate
+      - run: yarn install --immutable
+      - name: Read-only enforcement tests
+        run: yarn test
+        env:
+          TEST_DATABASE_URL: postgres://test:test@localhost:5432/test
+      - name: Committed dist/ matches source
+        run: |
+          yarn dlx -q esbuild@0.28.1 src/index.ts --bundle --platform=node --format=cjs --outfile=/tmp/index.js
+          cmp /tmp/index.js dist/index.js || { echo "dist/index.js is stale: rebuild and commit it"; exit 1; }

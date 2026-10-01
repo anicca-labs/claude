@@ -10,6 +10,7 @@ package-lock.json
 dist/
 !plugins/expo-rn-plugin/mcps/expo-mcp-server/dist/
 !plugins/expo-rn-plugin/mcps/database-mcp-server/dist/
+!plugins/react-web-plugin/mcps/database-mcp-server/dist/
 
 # Yarn
 .yarn/cache
