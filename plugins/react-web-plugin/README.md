@@ -54,15 +54,48 @@ The bundled database MCP server connects via `DATABASE_URL` (any Postgres; set `
 - Python 3 (`python3`) — used by `mcp-run.sh` and `guard-generated-files.sh` to parse JSON
 - Yarn Berry (`corepack enable && corepack prepare yarn@stable --activate`)
 - Claude Code CLI
+- [`uv`](https://docs.astral.sh/uv/) (`brew install uv`) — runs the AWS MCP server; skip if you don't use AWS
 - Optional: [Doppler](https://doppler.com) CLI for secret management, Stripe CLI for webhook development
 
 ## Install
 
 ```bash
-claude plugin install react-web-plugin --scope project
-# Testing from source? Set CLAUDE_PLUGIN_ROOT explicitly:
-#   CLAUDE_PLUGIN_ROOT=/path/to/react-web-plugin claude --plugin-dir /path/to/react-web-plugin
+# 1. Add this repo as a plugin marketplace (once per machine)
+claude plugin marketplace add anicca-labs/claude
+
+# 2. Install the plugin
+claude plugin install react-web-plugin@anicca-labs --scope user
+#   --scope user    → every project on this machine (recommended for individuals)
+#   --scope project → recorded in the repo's committed .claude/settings.json (whole team)
+#   --scope local   → this repo only, not committed
+
+# Later: pick up new versions
+claude plugin marketplace update anicca-labs && claude plugin update react-web-plugin@anicca-labs
 ```
+
+Restart Claude Code (in VS Code: quit the app with Cmd+Q, not just reload the window) after installing or updating. Inside a session, `/plugin` does the same interactively.
+
+Testing from source? `CLAUDE_PLUGIN_ROOT=/path/to/react-web-plugin claude --plugin-dir /path/to/react-web-plugin`
+
+### Connect the MCP servers
+
+Every server is optional — connect the ones your project uses and disable the rest in `/mcp` (per project, so they stop showing as failed). Keys go in Doppler or the project's `envFile` (see [Configuration](#configuration)), never in the repo.
+
+| Server | What you need | Where to get it |
+| --- | --- | --- |
+| `vercel` | Browser login | `/mcp` → `vercel` → authenticate; pick the team that owns your projects |
+| `stripe` | `STRIPE_SECRET_KEY` | Stripe Dashboard → Developers → API keys. Prefer a **restricted test-mode** key (`rk_test_…`) |
+| `render` | `RENDER_API_KEY` | Render → Account Settings → API Keys (browser login is not supported) |
+| `inngest` | Nothing | Local only — the Inngest dev server must be running on `localhost:8288` |
+| `aws` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | An IAM user with a **read-only** policy scoped to the buckets you need. Needs `uv` |
+| `sentry` | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG` | Sentry → Settings → Auth Tokens; org slug from your Sentry URL |
+| `database` | `DATABASE_URL` (optional `DB_SCHEMA`) | Your Postgres connection string — point it at a local/dev database |
+| `supabase` | `SUPABASE_ACCESS_TOKEN` | Supabase → Account → Access Tokens |
+| `github` | `GITHUB_PERSONAL_ACCESS_TOKEN` **in your shell environment** | GitHub → Settings → Developer settings → tokens. HTTP entry: it reads Claude Code's own environment, not the `envFile` |
+| `doppler` | Doppler CLI login | `doppler login` |
+| `context7`, `chrome-devtools` | Nothing | `chrome-devtools` needs Google Chrome installed |
+
+Check what connected with `/mcp`.
 
 ## New app quickstart
 
@@ -70,8 +103,8 @@ claude plugin install react-web-plugin --scope project
 # 1. Create the Next.js app
 yarn create next-app my-app --typescript --app && cd my-app
 
-# 2. Install the plugin (project scope)
-claude plugin install react-web-plugin --scope project
+# 2. Install the plugin (see Install above for the one-time marketplace step)
+claude plugin install react-web-plugin@anicca-labs --scope project
 
 # 3. Seed the project from templates/ — copy what applies:
 #    CLAUDE.md, .claude/, .github/, .husky/, .prettierrc, .prettierignore,
@@ -130,7 +163,7 @@ Models are declared as **aliases** (`opus` / `haiku`), not pinned snapshots, so 
 
 | Server | Description |
 | --- | --- |
-| `database` | DB introspection, query generation, migration generation, RLS inspection (ships pre-built in `dist/` — no build step) |
+| `database` | DB introspection, query generation, migration generation, RLS inspection. **Known issue:** `dist/` is not committed yet, so the server fails to start until it's built (`cd mcps/database-mcp-server && yarn install && yarn build`) |
 
 The server is wrapped by `bin/mcp-run.sh`, which injects secrets from Doppler when a project is configured (via plugin `userConfig`, an `mcp.config.json` `doppler` block, or `doppler setup`) and runs the command directly otherwise. Add project-level MCP servers (supabase, sentry, stripe, github, context7) in the app's own `.mcp.json` as needed — the expo plugin's entries are a good reference.
 
@@ -176,6 +209,23 @@ Alternatively, drop an `mcp.config.json` in the app root:
 ```
 
 The `doppler` block is what connects the database MCP server to `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` without a checked-in `.env`.
+
+**No Doppler?** Point the plugin at a private env file instead — keep it outside the repo (e.g. `~/.config/<project>/mcp.env`, `chmod 600`) and keep `mcp.config.json` out of git (add it to `.git/info/exclude` if the project's `.gitignore` doesn't cover it):
+
+```json
+{ "envFile": "/Users/you/.config/my-app/mcp.env" }
+```
+
+```bash
+# ~/.config/my-app/mcp.env — one KEY=value per line
+STRIPE_SECRET_KEY=rk_test_...
+RENDER_API_KEY=rnd_...
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_REGION=us-west-2
+```
+
+`envFile` takes an absolute path or one relative to `mcp.config.json`. Every server started through `bin/mcp-run.sh` reads it — all of them except the HTTP entries (`vercel`, `github`, `inngest`).
 
 ## Development
 
