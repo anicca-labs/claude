@@ -17,6 +17,9 @@
 # cloned repo must not be able to feed values to your servers.
 #
 # Called without options (`mcp-run.sh <command> ...`) the server gets no secrets.
+#
+# Production Doppler configs (prd, prod, production, prd_*) are refused unless
+# MCP_RUN_ALLOW_PRODUCTION=1 is set in the environment Claude Code runs in.
 set -euo pipefail
 
 KEYS=""
@@ -163,7 +166,23 @@ _load_env_file() {
   done < "$file"
 }
 
+# Production guard: never hand production secrets to an MCP server unless the
+# user opted in from their own environment. A repo's mcp.config.json can't set
+# this, and an env file can't either (env files only feed declared server keys).
+_is_production_config() {
+  local c
+  c="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  case "$c" in
+    prd|prod|production|prd_*|prod_*|production_*) return 0 ;;
+  esac
+  return 1
+}
+
 if [ -n "$PROJECT" ]; then
+  if [ -n "$KEYS" ] && _is_production_config "$CONFIG" && [ "${MCP_RUN_ALLOW_PRODUCTION:-}" != "1" ]; then
+    echo "mcp-run.sh: refusing Doppler config '$CONFIG' for project '$PROJECT': it looks like production. Use a dev or staging config, or set MCP_RUN_ALLOW_PRODUCTION=1 in your own environment to opt in deliberately." >&2
+    exit 1
+  fi
   if [ -n "$KEYS" ]; then
     # Fetch the config as JSON and keep only the declared keys. NUL-separated so
     # values with newlines survive.

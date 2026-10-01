@@ -34,7 +34,7 @@
     },
     "doppler_config": {
       "title": "Doppler Config",
-      "description": "Doppler config to use (dev / stg / prd, default: dev)",
+      "description": "Doppler config to use (dev / stg, default: dev). Production configs (prd, prod, production, prd_*) are refused unless MCP_RUN_ALLOW_PRODUCTION=1 is set in your environment.",
       "type": "string",
       "sensitive": false
     }

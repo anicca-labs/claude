@@ -180,9 +180,11 @@ createBrowserClient<Database>(url, key, { db: { schema: 'api' } })
 
 Every tenant-owned table carries the tenant column (`business_id`); every query, RLS policy, route handler, and server action scopes through it via the caller's **membership**, never a client-supplied id. One business seeing another's data is the worst bug this codebase can ship — treat any shortcut here as a blocker in review.
 
-## Supabase deployment rule
+## Production is human-gated
 
-**Always apply every server-side fix — migrations, RLS policies, DB schema changes, edge functions — to both stg AND prd.** Client code is deployed once, but server-side changes are per-project. Never leave one Supabase project behind — if only stg is fixed, bugs become impossible to reproduce in production while staging appears healthy.
+**Never change production yourself.** That means no deploys, migrations, RLS or schema changes, edge-function deploys, env-var edits, SQL writes, live-mode Stripe calls, or service changes on Render/Vercel/AWS against production, unless the human explicitly approves that specific action in this conversation. Approval for one action doesn't cover the next. Reading production (logs, errors, metrics) is fine when the task needs it.
+
+Default to staging. When a server-side fix (migration, RLS policy, schema change, edge function) is verified on stg, **tell the human it still needs applying to prd** and hand them the exact command or migration. Don't run it. Server-side changes are per-project, so a fix that only reaches stg leaves production broken while staging looks healthy. Flag it every time rather than leaving prd behind silently.
 
 ## Dates
 

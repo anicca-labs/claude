@@ -197,7 +197,7 @@ The plugin has two optional install-time config keys:
 | Key | Description |
 | --- | --- |
 | `doppler_project` | Your Doppler project name (e.g. `my-app`) |
-| `doppler_config` | Config to use (`dev` / `stg` / `prd`, default: `dev`) |
+| `doppler_config` | Config to use (`dev` / `stg`, default: `dev`). Production configs (`prd`, `prod`, `production`, `prd_*`) are refused unless you set `MCP_RUN_ALLOW_PRODUCTION=1` in your own environment |
 
 Alternatively, drop an `mcp.config.json` in the app root:
 
