@@ -1,0 +1,38 @@
+name: Test MCP launchers
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/*/bin/**'
+      - 'plugins/*/tests/**'
+      - 'plugins/*/.mcp.json'
+      - '.github/workflows/test-launchers.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/*/bin/**'
+      - 'plugins/*/tests/**'
+      - 'plugins/*/.mcp.json'
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]   # macOS for its bash 3.2
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure git identity (tests create throwaway repos)
+        run: git config --global user.email ci@example.com && git config --global user.name ci
+      - name: Run launcher tests
+        run: |
+          status=0
+          for t in plugins/*/tests/mcp-run.test.sh; do
+            echo "::group::$t"
+            bash "$t" || status=1
+            echo "::endgroup::"
+          done
+          exit $status
+      - name: shellcheck
+        if: runner.os == 'Linux'
+        run: shellcheck -s bash plugins/*/bin/mcp-run.sh

@@ -165,7 +165,7 @@ Models are declared as **aliases** (`opus` / `haiku`), not pinned snapshots, so 
 | --- | --- |
 | `database` | DB introspection, query generation, migration generation, RLS inspection. **Known issue:** `dist/` is not committed yet, so the server fails to start until it's built (`cd mcps/database-mcp-server && yarn install && yarn build`) |
 
-The server is wrapped by `bin/mcp-run.sh`, which injects secrets from Doppler when a project is configured (via plugin `userConfig`, an `mcp.config.json` `doppler` block, or `doppler setup`) and runs the command directly otherwise. Add project-level MCP servers (supabase, sentry, stripe, github, context7) in the app's own `.mcp.json` as needed — the expo plugin's entries are a good reference.
+Stdio servers are started by `bin/mcp-run.sh`, which gives each one a scrubbed environment: a fixed baseline (PATH, HOME, locale, proxy/CA settings) plus **only the keys that server declares** with `--keys` in `.mcp.json`. So Context7 never sees your Stripe key. Declared keys come from Claude Code's environment, then the project's secret source (Doppler via plugin `userConfig`, an `mcp.config.json` `doppler` block or `doppler setup`; otherwise the `envFile`), then `--set KEY=VALUE` pins, which nothing can override (the AWS server's `READ_OPERATIONS_ONLY=true` is one). Adding a server of your own: `mcp-run.sh --keys "MY_API_KEY" -- npx -y my-mcp-server@1.2.3`. Tests: `bash plugins/react-web-plugin/tests/mcp-run.test.sh`.
 
 **Not using Doppler?** Many web projects keep secrets in Vercel/Render environment variables instead of a secrets manager. Since MCP servers don't read a project's `.env` on their own, point the runner at one so servers like `stripe` and `sentry` get their keys without every developer exporting them in their shell profile:
 
@@ -225,7 +225,7 @@ AWS_SECRET_ACCESS_KEY=...
 AWS_REGION=us-west-2
 ```
 
-`envFile` takes an absolute path or one relative to `mcp.config.json`. Every server started through `bin/mcp-run.sh` reads it — all of them except the HTTP entries (`vercel`, `github`, `inngest`).
+`envFile` takes an absolute path or one relative to `mcp.config.json`. It is read as plain `KEY=value` data (comments, `export` and quotes are fine; nothing in it is ever executed), and each server only receives the keys it declares. An env file that is committed to git is refused, so a cloned repo can't feed values to your servers. HTTP entries (`vercel`, `github`, `inngest`) don't use it.
 
 ## Development
 
