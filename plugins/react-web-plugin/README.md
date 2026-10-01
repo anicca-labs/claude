@@ -163,7 +163,7 @@ Models are declared as **aliases** (`opus` / `haiku`), not pinned snapshots, so 
 
 | Server | Description |
 | --- | --- |
-| `database` | DB introspection, query generation, migration generation, RLS inspection. **Known issue:** `dist/` is not committed yet, so the server fails to start until it's built (`cd mcps/database-mcp-server && yarn install && yarn build`) |
+| `database` | DB introspection, query generation, migration generation, RLS inspection. `run_query` is **read-only, enforced by Postgres** (read-only transaction, single statement, 15s timeout, always rolled back) and needs `DATABASE_URL`; in the Supabase REST fallback mode it refuses to run. Ships pre-built in `dist/`. Still point it at a dev database, ideally with a read-only role. |
 
 Stdio servers are started by `bin/mcp-run.sh`, which gives each one a scrubbed environment: a fixed baseline (PATH, HOME, locale, proxy/CA settings) plus **only the keys that server declares** with `--keys` in `.mcp.json`. So Context7 never sees your Stripe key. Declared keys come from Claude Code's environment, then the project's secret source (Doppler via plugin `userConfig`, an `mcp.config.json` `doppler` block or `doppler setup`; otherwise the `envFile`), then `--set KEY=VALUE` pins, which nothing can override (the AWS server's `READ_OPERATIONS_ONLY=true` is one). Adding a server of your own: `mcp-run.sh --keys "MY_API_KEY" -- npx -y my-mcp-server@1.2.3`. Tests: `bash plugins/react-web-plugin/tests/mcp-run.test.sh`.
 

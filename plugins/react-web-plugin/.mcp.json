@@ -9,10 +9,7 @@
         "--",
         "node",
         "${CLAUDE_PLUGIN_ROOT}/mcps/database-mcp-server/dist/index.js"
-      ],
-      "env": {
-        "NODE_PATH": "${CLAUDE_PLUGIN_ROOT}/mcps/database-mcp-server/node_modules"
-      }
+      ]
     },
     "vercel": {
       "type": "http",
