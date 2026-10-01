@@ -1,6 +1,6 @@
 {
   "name": "react-web-plugin",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Claude Code plugin for React web projects — Next.js (App Router) on Vercel, TypeScript strict, Tailwind CSS v4, Postgres (any provider; Supabase optional), Stripe, AWS S3, React Query, Sentry, Vitest, and Playwright. Also supports a Vite SPA + Express API + Inngest + Nx/pnpm monorepo stack as an alternative path. Provides a database MCP server, scaffolding, review agents, and browser preview for multi-tenant B2B dashboards.",
   "author": {
     "name": "Mariano Ksairi",
