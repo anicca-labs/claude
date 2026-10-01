@@ -83,9 +83,9 @@ Every server is optional — connect the ones your project uses and disable the 
 
 | Server | What you need | Where to get it |
 | --- | --- | --- |
-| `vercel` | Browser login | `/mcp` → `vercel` → authenticate; pick the team that owns your projects |
+| `vercel` | Browser login | `/mcp` → `vercel` → authenticate; pick the team that owns your projects. ⚠️ **Production-capable:** the login can deploy, change env vars and delete projects for every project in the team |
 | `stripe` | `STRIPE_SECRET_KEY` | Stripe Dashboard → Developers → API keys. Prefer a **restricted test-mode** key (`rk_test_…`) |
-| `render` | `RENDER_API_KEY` | Render → Account Settings → API Keys (browser login is not supported) |
+| `render` | `RENDER_API_KEY` | Render → Account Settings → API Keys (browser login is not supported). ⚠️ **Production-capable:** Render keys can't be scoped; the key can deploy and change env vars on every service you can access, production included |
 | `inngest` | Nothing | Local only — the Inngest dev server must be running on `localhost:8288` |
 | `aws` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | An IAM user with a **read-only** policy scoped to the buckets you need. Needs `uv` |
 | `sentry` | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG` | Sentry → Settings → Auth Tokens; org slug from your Sentry URL |
@@ -96,6 +96,23 @@ Every server is optional — connect the ones your project uses and disable the 
 | `context7`, `chrome-devtools` | Nothing | `chrome-devtools` needs Google Chrome installed |
 
 Check what connected with `/mcp`.
+
+### Security model
+
+What the plugin enforces:
+
+- **Each server gets only its own keys.** `bin/mcp-run.sh` starts every stdio server from an empty environment plus the keys it declares in `.mcp.json`.
+- **Env files are data.** They're parsed as `KEY=value`, never executed, and an env file committed to git is refused.
+- **Production Doppler configs are refused** (`prd`, `prod`, `production`, `prd_*`) unless you set `MCP_RUN_ALLOW_PRODUCTION=1` in your own environment.
+- **`run_query` is read-only in Postgres itself**: read-only transaction, single statement, 15s timeout, always rolled back.
+- **Every package is pinned**, and no secret is passed on a command line. `tests/` checks all of this in CI.
+
+What it can't enforce:
+
+- **Vercel and Render credentials can change production.** Neither offers read-only or scoped access, so connect them only if you accept that, and keep Claude Code's permission prompts on for their write tools.
+- **The "production is human-gated" rule in the skills is guidance to the agent, not a technical control.** Claude Code's permission settings and your own review are what stop a write.
+- **Point `database` at a dev database**, ideally with a read-only role. Read-only enforcement stops writes, not reads of sensitive data.
+- **Use the narrowest key each service offers**: a restricted test-mode Stripe key, a read-only IAM policy for AWS.
 
 ## New app quickstart
 
