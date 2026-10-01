@@ -24,7 +24,7 @@
         "--",
         "bash",
         "-c",
-        "exec npx -y mcp-remote@latest https://mcp.render.com/mcp --header \"Authorization:Bearer $RENDER_API_KEY\""
+        "h=\"Authorization:Bearer \"'$''{RENDER_API_KEY}'; exec npx -y mcp-remote@0.14.3 https://mcp.render.com/mcp --header \"$h\""
       ]
     },
     "inngest": {
@@ -40,7 +40,7 @@
         "--",
         "npx",
         "-y",
-        "@supabase/mcp-server-supabase@latest"
+        "@supabase/mcp-server-supabase@0.13.0"
       ]
     },
     "github": {
@@ -55,11 +55,11 @@
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
       "args": [
         "--keys",
-        "SENTRY_AUTH_TOKEN SENTRY_ORG SENTRY_ACCESS_TOKEN",
+        "SENTRY_AUTH_TOKEN SENTRY_ACCESS_TOKEN SENTRY_ORG",
         "--",
         "bash",
         "-c",
-        "exec npx -y @sentry/mcp-server@latest --access-token=\"$SENTRY_AUTH_TOKEN\" --organization-slug=\"$SENTRY_ORG\""
+        "exec npx -y @sentry/mcp-server@0.42.0 --organization-slug=\"$SENTRY_ORG\""
       ]
     },
     "stripe": {
@@ -71,7 +71,7 @@
         "--",
         "npx",
         "-y",
-        "@stripe/mcp"
+        "@stripe/mcp@0.3.3"
       ]
     },
     "aws": {
@@ -86,7 +86,7 @@
         "AWS_API_MCP_TELEMETRY=false",
         "--",
         "uvx",
-        "awslabs.aws-api-mcp-server@latest"
+        "awslabs.aws-api-mcp-server@1.5.6"
       ]
     },
     "doppler": {
@@ -98,7 +98,7 @@
         "--",
         "npx",
         "-y",
-        "@dopplerhq/mcp-server"
+        "@dopplerhq/mcp-server@1.0.5"
       ]
     },
     "context7": {
@@ -110,7 +110,7 @@
         "--",
         "npx",
         "-y",
-        "@upstash/context7-mcp@latest"
+        "@upstash/context7-mcp@4.1.1"
       ]
     },
     "chrome-devtools": {
@@ -120,7 +120,7 @@
         "--",
         "npx",
         "-y",
-        "chrome-devtools-mcp@latest"
+        "chrome-devtools-mcp@1.10.1"
       ]
     }
   }
