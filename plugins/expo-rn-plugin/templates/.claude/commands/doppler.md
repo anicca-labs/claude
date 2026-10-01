@@ -11,7 +11,7 @@ To add a new secret (`$ARGUMENTS`):
    VAR_NAME={{ .VAR_NAME }}
    ```
 
-2. Set in all Doppler configs:
+2. Set in all Doppler configs (dev and stg yourself; **prd only with the human's explicit approval**, or hand them the command):
    ```bash
    doppler secrets set VAR_NAME="value" --project mobile --config dev
    doppler secrets set VAR_NAME="value" --project mobile --config stg

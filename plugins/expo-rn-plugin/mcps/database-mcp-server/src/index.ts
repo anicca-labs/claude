@@ -134,7 +134,7 @@ server.registerTool(
   "run_query",
   {
     description:
-      "Executes a raw SQL query against your database and returns the results",
+      "Runs one read-only SQL statement against your database and returns the rows. Enforced by the database: any write, DDL or multi-statement input is rejected, and queries time out after 15 seconds. Needs DATABASE_URL.",
     inputSchema: {
       query: z
         .string()

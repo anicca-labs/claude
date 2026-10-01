@@ -351,7 +351,7 @@ Figma loops without downgrading the model.
 | Server     | Description                                                                                       |
 | ---------- | ------------------------------------------------------------------------------------------------- |
 | `expo`     | React Native / Expo tools: config, routes, components, scaffolding, i18n, EAS, push notifications |
-| `database` | DB introspection, query generation, migration generation, RLS inspection                          |
+| `database` | DB introspection, query generation, migration generation, RLS inspection. `run_query` is read-only, enforced by Postgres, and needs `DATABASE_URL` (your Supabase direct connection string); it refuses to run over the `run_sql` RPC |
 | `figma`    | Figma design data and asset export                                                                |
 | `github`   | Official GitHub MCP server (remote `api.githubcopilot.com`) — PRs, issues, code search            |
 | `sentry`   | Error monitoring                                                                                  |
@@ -360,7 +360,7 @@ Figma loops without downgrading the model.
 | `firebase` | Firebase services                                                                                 |
 | `context7` | Up-to-date library docs (React Native, Expo, etc.)                                                |
 
-All stdio servers that require secrets are wrapped via Doppler (`bin/mcp-run.sh`). The
+Stdio servers start through `bin/mcp-run.sh`, which gives each one a scrubbed environment plus **only the keys it declares** with `--keys` in `.mcp.json`, read from Doppler or an `envFile` (parsed as data, never executed; refused if committed to git). Production Doppler configs (`prd`, `prod`, `production`, `prd_*`) are refused unless you set `MCP_RUN_ALLOW_PRODUCTION=1` in your own environment, so **`revenuecat-prd` is off by default**. Every package is pinned and no key is passed on a command line; `tests/` checks all of this in CI. The
 `github` server is the official remote server and authenticates with a
 `GITHUB_PERSONAL_ACCESS_TOKEN` env var (it replaced the now-archived
 `@modelcontextprotocol/server-github`). `figma` still uses the third-party
@@ -414,7 +414,7 @@ The plugin has two optional install-time config keys:
 | Key               | Description                                            |
 | ----------------- | ------------------------------------------------------ |
 | `doppler_project` | Your Doppler project name (e.g. `my-app`)              |
-| `doppler_config`  | Config to use (`dev` / `stg` / `prd`, default: `dev`)  |
+| `doppler_config`  | Config to use (`dev` / `stg`, default: `dev`). Production configs are refused unless `MCP_RUN_ALLOW_PRODUCTION=1` is set in your environment |
 
 You do not need to fill these in manually. `setup-app.sh` runs `doppler setup` interactively and writes both values to `mcp.config.json` automatically. The install-time prompts are a fallback only.
 
@@ -496,6 +496,7 @@ In Authentication → URL Configuration, set the redirect URL per env:
 When the plugin updates, apps built from it don't auto-update. Apply changes manually:
 
 1. **MCP servers** — rebuild if `mcps/*/src/` changed: `cd mcps/expo-mcp-server && yarn build`
+   - **Security update (v1.4.7+):** apps that committed `bin/mcp-run.sh` and `.mcp.json` must replace **both, together**, with `bin/mcp-run.sh` and `templates/.mcp.json` from the plugin. The new launcher only passes keys a server declares with `--keys`, so mixing an old `.mcp.json` with the new launcher leaves servers without keys, and keeping the old launcher keeps the old behaviour (every key to every server).
 2. **Scripts** — re-run `setup-app.sh` to merge updated `package.json` scripts; review the git diff before committing
 3. **Templates** — compare `templates/` files against your project manually (no auto-merge); key files to check: `app/_layout.tsx`, `app.config.ts`, `.gitignore`, `eas.json`
 4. **tsconfig paths** — add new aliases manually (e.g. `@sentry`, `@fonts`) when adopting new services
@@ -568,7 +569,7 @@ claude plugin validate
 
 1. Create a directory under `mcps/` (e.g. `mcps/my-mcp-server/`)
 2. Follow the structure of `mcps/expo-mcp-server/` (`src/index.ts`, `src/tools/`, `package.json`, `tsconfig.json`)
-3. Add an entry to `.mcp.json` using `${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh` as the command
+3. Add an entry to `.mcp.json` using `${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh` as the command, with the keys it needs and a pinned package: `"args": ["--keys", "MY_API_KEY", "--", "npx", "-y", "my-mcp@1.2.3"]`. Mirror it in `templates/.mcp.json`
 4. Add `build_server "my-mcp-server"` to `scripts/build-mcp-servers.sh` — the script hardcodes server names, it does not auto-discover new ones
 
 ## Releases / versioning

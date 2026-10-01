@@ -1,14 +1,14 @@
-name: Test react-web database MCP server
+name: Test database MCP servers
 
 on:
   pull_request:
     paths:
-      - 'plugins/react-web-plugin/mcps/database-mcp-server/**'
-      - '.github/workflows/test-react-web-database.yml'
+      - 'plugins/*/mcps/database-mcp-server/**'
+      - '.github/workflows/test-database-mcp.yml'
   push:
     branches: [main]
     paths:
-      - 'plugins/react-web-plugin/mcps/database-mcp-server/**'
+      - 'plugins/*/mcps/database-mcp-server/**'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -16,6 +16,9 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        plugin: [react-web-plugin, expo-rn-plugin]
     services:
       postgres:
         image: postgres:16-alpine
@@ -28,7 +31,7 @@ jobs:
           --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
     defaults:
       run:
-        working-directory: plugins/react-web-plugin/mcps/database-mcp-server
+        working-directory: plugins/${{ matrix.plugin }}/mcps/database-mcp-server
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

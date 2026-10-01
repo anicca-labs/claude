@@ -3,7 +3,13 @@
     "expo": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["node", "${CLAUDE_PLUGIN_ROOT}/mcps/expo-mcp-server/dist/index.js"],
+      "args": [
+        "--keys",
+        "SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SERVER_URL EXPO_PUBLIC_OPEN_API_SERVER_URL",
+        "--",
+        "node",
+        "${CLAUDE_PLUGIN_ROOT}/mcps/expo-mcp-server/dist/index.js"
+      ],
       "env": {
         "NODE_PATH": "${CLAUDE_PLUGIN_ROOT}/mcps/expo-mcp-server/node_modules"
       }
@@ -11,7 +17,13 @@
     "database": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["node", "${CLAUDE_PLUGIN_ROOT}/mcps/database-mcp-server/dist/index.js"],
+      "args": [
+        "--keys",
+        "DATABASE_URL DB_SCHEMA SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SERVER_URL",
+        "--",
+        "node",
+        "${CLAUDE_PLUGIN_ROOT}/mcps/database-mcp-server/dist/index.js"
+      ],
       "env": {
         "NODE_PATH": "${CLAUDE_PLUGIN_ROOT}/mcps/database-mcp-server/node_modules"
       }
@@ -19,12 +31,27 @@
     "supabase": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "@supabase/mcp-server-supabase@latest"]
+      "args": [
+        "--keys",
+        "SUPABASE_ACCESS_TOKEN",
+        "--",
+        "npx",
+        "-y",
+        "@supabase/mcp-server-supabase@0.13.0"
+      ]
     },
     "figma": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "figma-developer-mcp", "--stdio"]
+      "args": [
+        "--keys",
+        "FIGMA_API_KEY FIGMA_OAUTH_TOKEN",
+        "--",
+        "npx",
+        "-y",
+        "figma-developer-mcp@0.13.2",
+        "--stdio"
+      ]
     },
     "github": {
       "type": "http",
@@ -36,37 +63,87 @@
     "sentry": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["bash", "-c", "exec npx -y @sentry/mcp-server@latest --access-token=\"$SENTRY_AUTH_TOKEN\" --organization-slug=\"$SENTRY_ORG\""]
+      "args": [
+        "--keys",
+        "SENTRY_AUTH_TOKEN SENTRY_ACCESS_TOKEN SENTRY_ORG",
+        "--",
+        "bash",
+        "-c",
+        "exec npx -y @sentry/mcp-server@0.42.0 --organization-slug=\"$SENTRY_ORG\""
+      ]
     },
     "stripe": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "@stripe/mcp"]
+      "args": [
+        "--keys",
+        "STRIPE_SECRET_KEY",
+        "--",
+        "npx",
+        "-y",
+        "@stripe/mcp@0.3.3"
+      ]
     },
     "doppler": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "@dopplerhq/mcp-server"]
+      "args": [
+        "--keys",
+        "DOPPLER_TOKEN",
+        "--",
+        "npx",
+        "-y",
+        "@dopplerhq/mcp-server@1.0.5"
+      ]
     },
     "firebase": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "firebase-tools@latest", "experimental:mcp"]
+      "args": [
+        "--keys",
+        "GOOGLE_APPLICATION_CREDENTIALS FIREBASE_TOKEN",
+        "--",
+        "npx",
+        "-y",
+        "firebase-tools@15.32.1",
+        "experimental:mcp"
+      ]
     },
     "context7": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "@upstash/context7-mcp@latest"]
+      "args": [
+        "--keys",
+        "CONTEXT7_API_KEY",
+        "--",
+        "npx",
+        "-y",
+        "@upstash/context7-mcp@4.1.1"
+      ]
     },
     "revenuecat": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["bash", "-c", "exec npx -y supergateway --streamableHttp https://mcp.revenuecat.ai/mcp --oauth2Bearer \"$RC_MCP_API_KEY\""]
+      "args": [
+        "--keys",
+        "RC_MCP_API_KEY",
+        "--",
+        "bash",
+        "-c",
+        "h=\"Authorization:Bearer \"'$''{RC_MCP_API_KEY}'; exec npx -y mcp-remote@0.14.3 https://mcp.revenuecat.ai/mcp --header \"$h\""
+      ]
     },
     "revenuecat-prd": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["bash", "-c", "exec npx -y supergateway --streamableHttp https://mcp.revenuecat.ai/mcp --oauth2Bearer \"$RC_MCP_API_KEY\""],
+      "args": [
+        "--keys",
+        "RC_MCP_API_KEY",
+        "--",
+        "bash",
+        "-c",
+        "h=\"Authorization:Bearer \"'$''{RC_MCP_API_KEY}'; exec npx -y mcp-remote@0.14.3 https://mcp.revenuecat.ai/mcp --header \"$h\""
+      ],
       "env": {
         "CLAUDE_PLUGIN_OPTION_DOPPLER_CONFIG": "prd"
       }

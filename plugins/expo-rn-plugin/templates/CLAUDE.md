@@ -88,4 +88,5 @@ Both assets **must have transparent backgrounds** — the app's theme controls t
 - **i18n:** full module at `src/i18n/` — root `lingui.config.ts` is a thin re-export only
 - **Theme:** Figma tokens in `src/theme/{themes,tamagui.config}/` — root `tamagui.config.ts` is a thin re-export only
 - Storage: `expo-secure-store` (tokens) · MMKV/Zustand (UI) · AsyncStorage (cache)
-- OTA: self-hosted via Supabase — `yarn push-ota` (stg) / `yarn push-ota:prd` (prd) — see `/ota`
+- OTA: self-hosted via Supabase — `yarn push-ota` (stg) / `yarn push-ota:prd` (prd, human-only) — see `/ota`
+- Production is human-gated: apply server-side changes to stg, then hand the human the prd command. Never change production without explicit, per-action approval
