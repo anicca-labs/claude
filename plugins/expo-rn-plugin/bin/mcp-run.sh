@@ -183,7 +183,10 @@ if [ -n "$PROJECT" ]; then
     echo "mcp-run.sh: refusing Doppler config '$CONFIG' for project '$PROJECT': it looks like production. Use a dev or staging config, or set MCP_RUN_ALLOW_PRODUCTION=1 in your own environment to opt in deliberately." >&2
     exit 1
   fi
-  if [ -n "$KEYS" ]; then
+  if [ -n "$KEYS" ] && ! command -v "$DOPPLER_BIN" >/dev/null 2>&1; then
+    # e.g. Claude Code on the web: no Doppler CLI, secrets already in the env.
+    echo "mcp-run.sh: Doppler CLI not found; using declared keys from the environment" >&2
+  elif [ -n "$KEYS" ]; then
     # Fetch the config as JSON and keep only the declared keys. NUL-separated so
     # values with newlines survive.
     _json="$("$DOPPLER_BIN" secrets download --no-file --format json -p "$PROJECT" -c "$CONFIG")" || {
