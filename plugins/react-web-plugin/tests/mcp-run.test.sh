@@ -174,6 +174,51 @@ else
   fail "Doppler secrets are filtered to the declared keys" "rc=$RC $OUT"
 fi
 
+# --- 11. production Doppler configs are refused ----------------------------
+for CFGNAME in prd prod production prd_hotfix PRD; do
+  P=$(new_project "prod-$CFGNAME")
+  printf '{ "doppler": { "project": "app", "config": "%s" } }' "$CFGNAME" > "$P/mcp.config.json"
+  EXTRA_ENV="MCP_RUN_DOPPLER_BIN=$FAKE" run_in "$P" --keys "STRIPE_SECRET_KEY" -- echo SERVER_STARTED
+  if [ "$RC" -ne 0 ] && ! printf '%s' "$OUT" | grep -q SERVER_STARTED \
+     && printf '%s' "$OUT" | grep -qi "production"; then
+    ok "refuses Doppler config '$CFGNAME'"
+  else
+    fail "refuses Doppler config '$CFGNAME'" "rc=$RC $OUT"
+  fi
+done
+
+# --- 12. the plugin option can't select production either ------------------
+P=$(new_project prod-option)
+printf '{ "doppler": { "project": "app", "config": "dev" } }' > "$P/mcp.config.json"
+EXTRA_ENV="MCP_RUN_DOPPLER_BIN=$FAKE CLAUDE_PLUGIN_OPTION_DOPPLER_CONFIG=prd" \
+  run_in "$P" --keys "STRIPE_SECRET_KEY" -- echo SERVER_STARTED
+if [ "$RC" -ne 0 ] && ! printf '%s' "$OUT" | grep -q SERVER_STARTED; then
+  ok "refuses prd from the plugin's doppler_config option"
+else
+  fail "refuses prd from the plugin's doppler_config option" "rc=$RC $OUT"
+fi
+
+# --- 13. explicit opt-in from the user's environment allows it --------------
+P=$(new_project prod-optin)
+printf '{ "doppler": { "project": "app", "config": "prd" } }' > "$P/mcp.config.json"
+EXTRA_ENV="MCP_RUN_DOPPLER_BIN=$FAKE MCP_RUN_ALLOW_PRODUCTION=1" \
+  run_in "$P" --keys "STRIPE_SECRET_KEY" -- env
+if [ "$RC" -eq 0 ] && has_line "$OUT" "STRIPE_SECRET_KEY=sk_dop" && ! has_key "$OUT" MCP_RUN_ALLOW_PRODUCTION; then
+  ok "MCP_RUN_ALLOW_PRODUCTION=1 opts in (and isn't passed to the server)"
+else
+  fail "MCP_RUN_ALLOW_PRODUCTION=1 opts in (and isn't passed to the server)" "rc=$RC $OUT"
+fi
+
+# --- 14. servers that need no secrets still start in a prd-configured repo --
+P=$(new_project prod-nokeys)
+printf '{ "doppler": { "project": "app", "config": "prd" } }' > "$P/mcp.config.json"
+EXTRA_ENV="MCP_RUN_DOPPLER_BIN=$FAKE" run_in "$P" -- echo SERVER_STARTED
+if [ "$RC" -eq 0 ] && printf '%s' "$OUT" | grep -q SERVER_STARTED; then
+  ok "a server with no keys is unaffected by the production guard"
+else
+  fail "a server with no keys is unaffected by the production guard" "rc=$RC $OUT"
+fi
+
 echo
 echo "$PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

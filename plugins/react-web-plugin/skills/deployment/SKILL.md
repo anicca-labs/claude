@@ -11,7 +11,7 @@ Vercel has three env scopes: **Development** (`vercel dev` / pulled locally), **
 
 - `NEXT_PUBLIC_*` vars are inlined into the client bundle **at build time** — changing one requires a redeploy, and it is public. Secrets (Stripe secret key, `DATABASE_URL`, AWS keys, webhook secrets) must NEVER carry the prefix.
 - Preview and Production point at different databases/Stripe modes. A preview deployment writing to the prod database is the classic self-inflicted incident — check scoping when adding any var.
-- Manage vars with the CLI so changes are reproducible: `vercel env add NAME production`, `vercel env pull .env.local` to sync local dev. If the team uses Doppler, Doppler is the source of truth and syncs to Vercel — edit there, not in the Vercel dashboard.
+- Manage vars with the CLI so changes are reproducible: `vercel env add NAME preview`, `vercel env pull .env.local` to sync local dev. **Production-scoped vars, production deploys and promotions are human-only**: propose the exact command (e.g. `vercel env add NAME production`) and let the human run it, unless they explicitly approve that specific action. If the team uses Doppler, Doppler is the source of truth and syncs to Vercel — edit there, not in the Vercel dashboard.
 
 ## Day-to-day CLI
 

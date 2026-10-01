@@ -27,7 +27,7 @@
 - Verify UI changes with `/react-web-plugin:preview` (browser screenshot + dev-server errors + tsc) before reporting done
 - New tables: tenant column + RLS scoped through the membership table; then regenerate DB types
 - Every list page ships all four states: loading, error, empty, data
-- Apply server-side changes (migrations, RLS, edge functions) to **both** stg and prd Supabase projects
+- Server-side changes (migrations, RLS, edge functions) go to stg first; production is applied by a human. Hand over the exact command and flag that prd is still pending. Never change production without explicit, per-action approval
 - Keep files under 500 lines
 - Check `docs/solutions/` before implementing auth flows, billing, or webhooks — solved problems are documented there to prevent repeating known mistakes
 
