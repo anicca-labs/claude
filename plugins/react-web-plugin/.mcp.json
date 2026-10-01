@@ -3,7 +3,13 @@
     "database": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["node", "${CLAUDE_PLUGIN_ROOT}/mcps/database-mcp-server/dist/index.js"],
+      "args": [
+        "--keys",
+        "DATABASE_URL DB_SCHEMA SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SERVER_URL",
+        "--",
+        "node",
+        "${CLAUDE_PLUGIN_ROOT}/mcps/database-mcp-server/dist/index.js"
+      ],
       "env": {
         "NODE_PATH": "${CLAUDE_PLUGIN_ROOT}/mcps/database-mcp-server/node_modules"
       }
@@ -15,7 +21,14 @@
     "render": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["bash", "-c", "exec npx -y mcp-remote@latest https://mcp.render.com/mcp --header \"Authorization:Bearer $RENDER_API_KEY\""]
+      "args": [
+        "--keys",
+        "RENDER_API_KEY",
+        "--",
+        "bash",
+        "-c",
+        "exec npx -y mcp-remote@latest https://mcp.render.com/mcp --header \"Authorization:Bearer $RENDER_API_KEY\""
+      ]
     },
     "inngest": {
       "type": "http",
@@ -24,7 +37,14 @@
     "supabase": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "@supabase/mcp-server-supabase@latest"]
+      "args": [
+        "--keys",
+        "SUPABASE_ACCESS_TOKEN",
+        "--",
+        "npx",
+        "-y",
+        "@supabase/mcp-server-supabase@latest"
+      ]
     },
     "github": {
       "type": "http",
@@ -36,36 +56,75 @@
     "sentry": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["bash", "-c", "exec npx -y @sentry/mcp-server@latest --access-token=\"$SENTRY_AUTH_TOKEN\" --organization-slug=\"$SENTRY_ORG\""]
+      "args": [
+        "--keys",
+        "SENTRY_AUTH_TOKEN SENTRY_ORG SENTRY_ACCESS_TOKEN",
+        "--",
+        "bash",
+        "-c",
+        "exec npx -y @sentry/mcp-server@latest --access-token=\"$SENTRY_AUTH_TOKEN\" --organization-slug=\"$SENTRY_ORG\""
+      ]
     },
     "stripe": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "@stripe/mcp"]
+      "args": [
+        "--keys",
+        "STRIPE_SECRET_KEY",
+        "--",
+        "npx",
+        "-y",
+        "@stripe/mcp"
+      ]
     },
     "aws": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["uvx", "awslabs.aws-api-mcp-server@latest"],
-      "env": {
-        "READ_OPERATIONS_ONLY": "true",
-        "AWS_API_MCP_TELEMETRY": "false"
-      }
+      "args": [
+        "--keys",
+        "AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_REGION AWS_PROFILE AWS_API_MCP_PROFILE_NAME",
+        "--set",
+        "READ_OPERATIONS_ONLY=true",
+        "--set",
+        "AWS_API_MCP_TELEMETRY=false",
+        "--",
+        "uvx",
+        "awslabs.aws-api-mcp-server@latest"
+      ]
     },
     "doppler": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "@dopplerhq/mcp-server"]
+      "args": [
+        "--keys",
+        "DOPPLER_TOKEN",
+        "--",
+        "npx",
+        "-y",
+        "@dopplerhq/mcp-server"
+      ]
     },
     "context7": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "@upstash/context7-mcp@latest"]
+      "args": [
+        "--keys",
+        "CONTEXT7_API_KEY",
+        "--",
+        "npx",
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ]
     },
     "chrome-devtools": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
-      "args": ["npx", "-y", "chrome-devtools-mcp@latest"]
+      "args": [
+        "--",
+        "npx",
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ]
     }
   }
 }
