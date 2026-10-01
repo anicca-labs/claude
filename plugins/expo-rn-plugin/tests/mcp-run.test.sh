@@ -219,6 +219,17 @@ else
   fail "a server with no keys is unaffected by the production guard" "rc=$RC $OUT"
 fi
 
+# --- 15. Doppler configured but CLI missing: fall back to the environment ---
+P=$(new_project doppler-missing)
+printf '{ "doppler": { "project": "app", "config": "stg" } }' > "$P/mcp.config.json"
+EXTRA_ENV="MCP_RUN_DOPPLER_BIN=/nonexistent/doppler STRIPE_SECRET_KEY=sk_from_env RENDER_API_KEY=rnd_x" \
+  run_in "$P" --keys "STRIPE_SECRET_KEY" -- env
+if [ "$RC" -eq 0 ] && has_line "$OUT" "STRIPE_SECRET_KEY=sk_from_env" && ! has_key "$OUT" RENDER_API_KEY; then
+  ok "without the Doppler CLI, declared keys come from the environment"
+else
+  fail "without the Doppler CLI, declared keys come from the environment" "rc=$RC $OUT"
+fi
+
 echo
 echo "$PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
