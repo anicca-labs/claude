@@ -28,6 +28,17 @@
         "--stdio"
       ]
     },
+    "google-analytics": {
+      "type": "stdio",
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
+      "args": [
+        "--keys",
+        "GOOGLE_PROJECT_ID GOOGLE_APPLICATION_CREDENTIALS",
+        "--",
+        "uvx",
+        "analytics-mcp@1.1.0"
+      ]
+    },
     "render": {
       "type": "stdio",
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-run.sh",
